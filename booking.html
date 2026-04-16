@@ -46,8 +46,22 @@
         { id: 'custom', title: 'Custom Package' }
     ],
     submitBooking() {
-        // This will be connected to Firebase later
-        console.log('Booking submitted:', this.bookingData);
+        // Save booking to localStorage for real-time admin view
+        const bookings = JSON.parse(localStorage.getItem('lonash_bookings') || '[]');
+        const newBooking = {
+            id: 'BK-' + Math.floor(1000 + Math.random() * 9000),
+            name: this.bookingData.name,
+            email: this.bookingData.email,
+            phone: this.bookingData.phone,
+            tour: this.tours.find(t => t.id === this.bookingData.tourId)?.title || 'Custom Package',
+            date: this.bookingData.date,
+            status: 'Pending',
+            createdAt: new Date().toISOString()
+        };
+        bookings.push(newBooking);
+        localStorage.setItem('lonash_bookings', JSON.stringify(bookings));
+        
+        console.log('Booking submitted:', newBooking);
         this.step = 3;
     }
 }">
@@ -235,7 +249,7 @@
     <!-- Footer (Simplified) -->
     <footer class="bg-gray-900 text-white pt-16 pb-8">
         <div class="container mx-auto px-4 text-center text-gray-500">
-            <p>&copy; 2026 LonAsh Tours. All rights reserved.</p>
+            <p>&copy; 2026 Caleb Amartey Amarh. All rights reserved. | <a href="admin/login.html" class="hover:text-lonash-orange transition">Admin Portal</a></p>
         </div>
     </footer>
 
