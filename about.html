@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About Us | LonAsh Tours</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'lonash-blue': '#1E40AF',
+                        'lonash-orange': '#F97316',
+                    }
+                }
+            }
+        }
+    </script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3, .font-heading { font-family: 'Poppins', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-50" x-data="{ mobileMenuOpen: false }">
+
+    <!-- Header / Navbar -->
+    <header class="bg-white shadow-sm sticky top-0 z-50">
+        <nav class="container mx-auto px-4 py-4 flex items-center justify-between">
+            <a href="index.html" class="flex items-center space-x-2">
+                <div class="bg-lonash-blue p-2 rounded-lg">
+                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 002 2h1.5a2.5 2.5 0 012.5 2.5V14a2 2 0 002 2h1.065M12 22a10 10 0 100-20 10 10 0 000 20z"></path>
+                    </svg>
+                </div>
+                <span class="text-2xl font-bold text-lonash-blue">LonAsh <span class="text-lonash-orange">Tours</span></span>
+            </a>
+
+            <div class="hidden md:flex items-center space-x-8">
+                <a href="index.html" class="text-gray-700 hover:text-lonash-blue font-medium transition">Home</a>
+                <a href="about.html" class="text-lonash-blue font-bold transition border-b-2 border-lonash-blue">About</a>
+                <a href="tours.html" class="text-gray-700 hover:text-lonash-blue font-medium transition">Tours</a>
+                <a href="destinations.html" class="text-gray-700 hover:text-lonash-blue font-medium transition">Destinations</a>
+                <a href="blog.html" class="text-gray-700 hover:text-lonash-blue font-medium transition">Blog</a>
+                <a href="contact.html" class="text-gray-700 hover:text-lonash-blue font-medium transition">Contact</a>
+                <a href="booking.html" class="bg-lonash-orange text-white px-6 py-2 rounded-full font-bold hover:bg-orange-600 transition">Book Now</a>
+            </div>
+
+            <button @click="mobileMenuOpen = !mobileMenuOpen" class="md:hidden text-gray-700">
+                <svg x-show="!mobileMenuOpen" class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                <svg x-show="mobileMenuOpen" class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </nav>
+
+        <div x-show="mobileMenuOpen" class="md:hidden bg-white border-t py-4 px-4 space-y-4 shadow-lg absolute w-full">
+            <a href="index.html" class="block text-gray-700 font-medium">Home</a>
+            <a href="about.html" class="block text-lonash-blue font-bold">About</a>
+            <a href="tours.html" class="block text-gray-700 font-medium">Tours</a>
+            <a href="destinations.html" class="block text-gray-700 font-medium">Destinations</a>
+            <a href="blog.html" class="block text-gray-700 font-medium">Blog</a>
+            <a href="contact.html" class="block text-gray-700 font-medium">Contact</a>
+            <a href="booking.html" class="block bg-lonash-orange text-white px-6 py-2 rounded-full font-bold text-center">Book Now</a>
+        </div>
+    </header>
+
+    <main>
+        <!-- Page Header -->
+        <section class="bg-lonash-blue py-20 text-white text-center">
+            <div class="container mx-auto px-4">
+                <h1 class="text-4xl md:text-5xl font-bold mb-4">Our Story</h1>
+                <p class="text-xl opacity-90">Building the future of tourism in Ghana, one journey at a time.</p>
+            </div>
+        </section>
+
+        <!-- About Content -->
+        <section class="py-20">
+            <div class="container mx-auto px-4 max-w-4xl">
+                <div class="prose prose-lg max-w-none text-gray-700">
+                    <h2 class="text-3xl font-bold text-lonash-blue mb-6">Who We Are</h2>
+                    <p class="mb-6">
+                        LonAsh Tours is a newly launched, forward-thinking tourism company based in the historic city of Cape Coast, Ghana. Founded by Benjamin Eyison, our company was born out of a deep passion for showcasing the hidden gems, rich culture, and breathtaking landscapes of West Africa to the world.
+                    </p>
+                    <p class="mb-6">
+                        As a new startup, we bring a fresh perspective to the tourism industry. We aren't just another tour agency; we are your local partners in adventure. We believe that travel should be more than just visiting a place—it should be about connecting with people, understanding history, and creating memories that last a lifetime.
+                    </p>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-12 my-12">
+                        <div class="bg-white p-8 rounded-2xl shadow-md border-t-4 border-lonash-orange">
+                            <h3 class="text-xl font-bold text-lonash-blue mb-4">Our Mission</h3>
+                            <p>To provide authentic, sustainable, and high-quality tourism experiences that celebrate Ghana's heritage while empowering local communities.</p>
+                        </div>
+                        <div class="bg-white p-8 rounded-2xl shadow-md border-t-4 border-lonash-blue">
+                            <h3 class="text-xl font-bold text-lonash-blue mb-4">Our Vision</h3>
+                            <p>To become the leading tourism platform in West Africa, recognized for our excellence in service, innovation, and commitment to cultural preservation.</p>
+                        </div>
+                    </div>
+
+                    <h2 class="text-3xl font-bold text-lonash-blue mb-6">Why We Started</h2>
+                    <p class="mb-6">
+                        We noticed a gap in the market for personalized, budget-friendly, yet professional tourism services that cater to both locals and international visitors. LonAsh Tours was established to bridge this gap, offering everything from group travel for schools and churches to luxury vacation planning for families and couples.
+                    </p>
+                    <p>
+                        Based at 91 Kotokuraba Rd in Cape Coast, we are at the heart of Ghana's tourism hub, perfectly positioned to guide you through the history of the Cape Coast and Elmina Castles, the heights of Kakum National Park, and beyond.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- The Team / Owner -->
+        <section class="py-20 bg-gray-100">
+            <div class="container mx-auto px-4 text-center">
+                <h2 class="text-3xl font-bold text-lonash-blue mb-12">Leadership</h2>
+                <div class="max-w-md mx-auto">
+                    <div class="bg-white p-8 rounded-2xl shadow-xl">
+                        <div class="w-32 h-32 bg-gray-300 rounded-full mx-auto mb-6 flex items-center justify-center text-gray-500">
+                            <svg class="w-16 h-16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"></path></svg>
+                        </div>
+                        <h3 class="text-2xl font-bold text-lonash-blue">Benjamin Eyison</h3>
+                        <p class="text-lonash-orange font-medium mb-4">Founder & CEO</p>
+                        <p class="text-gray-600">A visionary entrepreneur dedicated to putting Ghana on the global tourism map through innovation and authentic storytelling.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-white pt-16 pb-8">
+        <!-- Reusing Footer from index.html (Simplified here for brevity, I will make sure they are identical in the final version) -->
+        <div class="container mx-auto px-4 text-center text-gray-500">
+            <p>&copy; 2026 LonAsh Tours. All rights reserved.</p>
+            <a href="index.html" class="text-lonash-orange hover:underline mt-2 inline-block">Back to Home</a>
+        </div>
+    </footer>
+
+    <script src="assets/js/main.js"></script>
+</body>
+</html>

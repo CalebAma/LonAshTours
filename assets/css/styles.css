@@ -1,0 +1,51 @@
+/* Custom Styles for LonAsh Tours */
+
+:root {
+    --lonash-blue: #1E40AF;
+    --lonash-orange: #F97316;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+::-webkit-scrollbar-thumb {
+    background: var(--lonash-blue);
+    border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #1e3a8a;
+}
+
+/* Animations */
+.reveal {
+    position: relative;
+    transform: translateY(30px);
+    opacity: 0;
+    transition: 1s all ease;
+}
+.reveal.active {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+/* Glassmorphism utility */
+.glass {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Custom button hover effect */
+.btn-primary {
+    @apply bg-lonash-blue text-white transition-all duration-300 transform hover:scale-105 active:scale-95;
+}
+
+/* Multi-language ready structure */
+[lang="en"] .lang-en { display: block; }
+[lang="fr"] .lang-fr { display: block; }
+/* Add more languages as needed */
