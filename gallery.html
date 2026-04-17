@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gallery | LonAsh Tours</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'lonash-blue': '#1E40AF',
+                        'lonash-orange': '#F97316',
+                    }
+                }
+            }
+        }
+    </script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3, .font-heading { font-family: 'Poppins', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-50" x-data="{ mobileMenuOpen: false }">
+
+    <!-- Header / Navbar -->
+    <header class="bg-white shadow-sm sticky top-0 z-50">
+        <nav class="container mx-auto px-4 py-4 flex items-center justify-between">
+            <a href="index.html" class="flex items-center space-x-2">
+                <div class="bg-lonash-blue p-2 rounded-lg">
+                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 002 2h1.5a2.5 2.5 0 012.5 2.5V14a2 2 0 002 2h1.065M12 22a10 10 0 100-20 10 10 0 000 20z"></path></svg>
+                </div>
+                <span class="text-2xl font-bold text-lonash-blue">LonAsh <span class="text-lonash-orange">Tours</span></span>
+            </a>
+
+            <div class="hidden md:flex items-center space-x-8">
+                <a href="index.html" class="text-gray-700 hover:text-lonash-blue font-medium transition">Home</a>
+                <a href="about.html" class="text-gray-700 hover:text-lonash-blue font-medium transition">About</a>
+                <a href="tours.html" class="text-gray-700 hover:text-lonash-blue font-medium transition">Tours</a>
+                <a href="destinations.html" class="text-gray-700 hover:text-lonash-blue font-medium transition">Destinations</a>
+                <a href="gallery.html" class="text-lonash-blue font-bold transition border-b-2 border-lonash-blue">Gallery</a>
+                <a href="blog.html" class="text-gray-700 hover:text-lonash-blue font-medium transition">Blog</a>
+                <a href="contact.html" class="text-gray-700 hover:text-lonash-blue font-medium transition">Contact</a>
+                <a href="booking.html" class="bg-lonash-orange text-white px-6 py-2 rounded-full font-bold hover:bg-orange-600 transition">Book Now</a>
+            </div>
+
+            <button @click="mobileMenuOpen = !mobileMenuOpen" class="md:hidden text-gray-700">
+                <svg x-show="!mobileMenuOpen" class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                <svg x-show="mobileMenuOpen" class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </nav>
+    </header>
+
+    <main>
+        <!-- Page Header -->
+        <section class="bg-lonash-blue py-16 text-white text-center">
+            <div class="container mx-auto px-4">
+                <h1 class="text-4xl font-bold mb-4">Tour Gallery</h1>
+                <p class="text-xl opacity-90">Capturing the magic of our adventures across Ghana.</p>
+            </div>
+        </section>
+
+        <!-- Gallery Grid -->
+        <section class="py-20">
+            <div class="container mx-auto px-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Image 1 -->
+                    <div class="group relative overflow-hidden rounded-2xl shadow-lg h-80">
+                        <img src="https://images.unsplash.com/photo-1590059300300-8446908502f6?auto=format&fit=crop&q=80&w=600" alt="Kakum National Park" class="w-full h-full object-cover group-hover:scale-110 transition duration-500">
+                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition duration-300 flex items-end p-6">
+                            <p class="text-white font-bold">Kakum Canopy Walk</p>
+                        </div>
+                    </div>
+                    <!-- Image 2 -->
+                    <div class="group relative overflow-hidden rounded-2xl shadow-lg h-80">
+                        <img src="https://images.unsplash.com/photo-1620052739343-470a7f05359a?auto=format&fit=crop&q=80&w=600" alt="Cape Coast Castle" class="w-full h-full object-cover group-hover:scale-110 transition duration-500">
+                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition duration-300 flex items-end p-6">
+                            <p class="text-white font-bold">Historic Cape Coast Castle</p>
+                        </div>
+                    </div>
+                    <!-- Image 3 -->
+                    <div class="group relative overflow-hidden rounded-2xl shadow-lg h-80">
+                        <img src="https://images.unsplash.com/photo-1547471080-7cc2caa01a7e?auto=format&fit=crop&q=80&w=600" alt="Mole Safari" class="w-full h-full object-cover group-hover:scale-110 transition duration-500">
+                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition duration-300 flex items-end p-6">
+                            <p class="text-white font-bold">Safari at Mole National Park</p>
+                        </div>
+                    </div>
+                    <!-- Image 4 -->
+                    <div class="group relative overflow-hidden rounded-2xl shadow-lg h-80">
+                        <img src="https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&q=80&w=600" alt="Boti Falls" class="w-full h-full object-cover group-hover:scale-110 transition duration-500">
+                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition duration-300 flex items-end p-6">
+                            <p class="text-white font-bold">The Twin Boti Falls</p>
+                        </div>
+                    </div>
+                    <!-- Image 5 -->
+                    <div class="group relative overflow-hidden rounded-2xl shadow-lg h-80">
+                        <img src="https://images.unsplash.com/photo-1591129841117-3adfd313e34f?auto=format&fit=crop&q=80&w=600" alt="Accra Beach" class="w-full h-full object-cover group-hover:scale-110 transition duration-500">
+                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition duration-300 flex items-end p-6">
+                            <p class="text-white font-bold">Vibrant Accra Coastline</p>
+                        </div>
+                    </div>
+                    <!-- Image 6 -->
+                    <div class="group relative overflow-hidden rounded-2xl shadow-lg h-80">
+                        <img src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&q=80&w=600" alt="Busua Beach" class="w-full h-full object-cover group-hover:scale-110 transition duration-500">
+                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition duration-300 flex items-end p-6">
+                            <p class="text-white font-bold">Relaxing at Busua Beach</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Empty State CTA -->
+                <div class="mt-16 text-center bg-white p-12 rounded-3xl shadow-sm border border-dashed border-gray-300">
+                    <h3 class="text-2xl font-bold text-gray-800 mb-4">Want to see your pictures here?</h3>
+                    <p class="text-gray-600 mb-8 max-w-md mx-auto">Book a tour with us today and create unforgettable memories that we can't wait to showcase!</p>
+                    <a href="booking.html" class="bg-lonash-orange text-white px-10 py-4 rounded-full font-bold hover:bg-orange-600 transition shadow-lg">Start Your Adventure</a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-white pt-16 pb-8">
+        <div class="container mx-auto px-4 text-center text-gray-500">
+            <p>&copy; 2026 Caleb Amartey Amarh. All rights reserved. | <a href="admin/login.html" class="hover:text-lonash-orange transition">Admin Portal</a></p>
+        </div>
+    </footer>
+
+    <script src="assets/js/main.js"></script>
+</body>
+</html>
