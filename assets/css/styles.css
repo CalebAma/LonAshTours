@@ -45,7 +45,12 @@
     @apply bg-lonash-blue text-white transition-all duration-300 transform hover:scale-105 active:scale-95;
 }
 
+/* Alpine.js cloak */
+[x-cloak] { display: none !important; }
+
 /* Multi-language ready structure */
 [lang="en"] .lang-en { display: block; }
 [lang="fr"] .lang-fr { display: block; }
 /* Add more languages as needed */
+
+[x-cloak] { display: none !important; }
