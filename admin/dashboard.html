@@ -30,7 +30,7 @@
                 bookings: [],
                 tours: [],
                 showTourModal: false,
-                newTour: { title: '', category: 'Adventure', price: '' },
+                newTour: { title: '', category: 'Adventure', price: '', image: '', description: '' },
                 user: null,
 
                 init() {
@@ -90,7 +90,7 @@
                             price: Number(this.newTour.price),
                             createdAt: new Date().toISOString()
                         });
-                        this.newTour = { title: '', category: 'Adventure', price: '' };
+                        this.newTour = { title: '', category: 'Adventure', price: '', image: '', description: '' };
                         this.showTourModal = false;
                     } catch (err) {
                         console.error('Add tour failed:', err);
@@ -277,6 +277,15 @@
                         <label class="block text-sm font-bold text-gray-700 mb-2">Price (GH₵)</label>
                         <input type="number" x-model="newTour.price" placeholder="100" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-lonash-blue outline-none">
                     </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Image URL</label>
+                    <input type="text" x-model="newTour.image" placeholder="https://images.unsplash.com/..." class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-lonash-blue outline-none">
+                    <p class="text-xs text-gray-400 mt-1">Paste a link to a high-quality travel image.</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Tour Description</label>
+                    <textarea x-model="newTour.description" rows="3" placeholder="Briefly describe this tour package..." class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-lonash-blue outline-none"></textarea>
                 </div>
                 <div class="flex gap-4 mt-6">
                     <button @click="showTourModal = false" class="flex-1 px-6 py-3 rounded-xl border border-gray-200 font-bold hover:bg-gray-50 transition">Cancel</button>

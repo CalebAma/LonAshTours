@@ -23,12 +23,30 @@
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Inter', sans-serif; }
-        h1, h2, h3, .font-heading { font-family: 'Poppins', sans-serif; }
-    </style>
+    <script type="module">
+        import { db, collection, query, orderBy, onSnapshot, limit } from './assets/js/firebase-config.js';
+
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('homePage', () => ({
+                mobileMenuOpen: false,
+                featuredTours: [],
+                loading: true,
+
+                async init() {
+                    const toursQuery = query(collection(db, 'tours'), orderBy('createdAt', 'desc'), limit(3));
+                    onSnapshot(toursQuery, (snapshot) => {
+                        this.featuredTours = snapshot.docs.map(doc => ({
+                            id: doc.id,
+                            ...doc.data()
+                        }));
+                        this.loading = false;
+                    });
+                }
+            }));
+        });
+    </script>
 </head>
-<body class="bg-gray-50" x-data="{ mobileMenuOpen: false }">
+<body class="bg-gray-50" x-data="homePage">
 
     <!-- Header / Navbar -->
     <header class="bg-white shadow-sm sticky top-0 z-50">
@@ -135,6 +153,58 @@
                         <h3 class="text-xl font-bold mb-4">Transportation</h3>
                         <p class="text-gray-600">Safe and reliable travel across all your chosen destinations.</p>
                     </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Featured Tours Section -->
+        <section class="py-20 bg-gray-50">
+            <div class="container mx-auto px-4">
+                <div class="flex flex-col md:flex-row items-end justify-between mb-12">
+                    <div class="text-left">
+                        <h2 class="text-3xl md:text-4xl font-bold mb-4 text-lonash-blue">Featured Tour Packages</h2>
+                        <p class="text-gray-600 max-w-xl">Explore our most popular and highly recommended adventures across Ghana.</p>
+                    </div>
+                    <a href="tours.html" class="mt-6 md:mt-0 text-lonash-blue font-bold flex items-center hover:text-lonash-orange transition">
+                        View All Tours 
+                        <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
+                    </a>
+                </div>
+
+                <!-- Loading State -->
+                <div x-show="loading" class="text-center py-20">
+                    <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-lonash-blue border-t-transparent"></div>
+                </div>
+
+                <!-- Tours Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" x-show="!loading && featuredTours.length > 0">
+                    <template x-for="tour in featuredTours" :key="tour.id">
+                        <div class="bg-white rounded-3xl overflow-hidden shadow-lg hover:shadow-2xl transition group border">
+                            <div class="relative h-64 overflow-hidden">
+                                <img :src="tour.image || 'https://images.unsplash.com/photo-1590059300300-8446908502f6?auto=format&fit=crop&q=80&w=600'" :alt="tour.title" class="w-full h-full object-cover group-hover:scale-110 transition duration-500">
+                                <div class="absolute top-4 right-4 bg-lonash-orange text-white px-4 py-1 rounded-full font-bold shadow-md">
+                                    GH₵<span x-text="tour.price"></span>
+                                </div>
+                                <div class="absolute top-4 left-4 bg-white/90 backdrop-blur-sm text-lonash-blue px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wider">
+                                    <span x-text="tour.category"></span>
+                                </div>
+                            </div>
+                            <div class="p-6">
+                                <h3 class="text-xl font-bold text-lonash-blue mb-2" x-text="tour.title"></h3>
+                                <p class="text-gray-600 mb-6 line-clamp-2" x-text="tour.description || 'Experience the beauty and culture of Ghana with this specially curated tour package.'"></p>
+                                <div class="flex items-center justify-between pt-4 border-t">
+                                    <a :href="'booking.html?tour=' + tour.id" class="text-lonash-blue font-bold hover:text-lonash-orange transition">Book Now</a>
+                                    <a href="tours.html" class="text-gray-400 text-sm hover:underline">View Details</a>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Empty State -->
+                <div x-show="!loading && featuredTours.length === 0" class="text-center py-20 bg-white rounded-3xl border-2 border-dashed border-gray-200">
+                    <p class="text-gray-500 font-medium">New tour packages are coming soon!</p>
+                    <a href="contact.html" class="text-lonash-blue font-bold hover:underline mt-4 inline-block">Contact us for custom requests</a>
                 </div>
             </div>
         </section>
