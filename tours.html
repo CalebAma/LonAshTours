@@ -19,25 +19,36 @@
     </script>
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Inter', sans-serif; }
-        h1, h2, h3, .font-heading { font-family: 'Poppins', sans-serif; }
-    </style>
+    <script type="module">
+        import { db, collection, query, orderBy, onSnapshot } from './assets/js/firebase-config.js';
+
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('toursPage', () => ({
+                mobileMenuOpen: false,
+                selectedCategory: 'all',
+                tours: [],
+                loading: true,
+
+                async init() {
+                    const toursQuery = query(collection(db, 'tours'), orderBy('createdAt', 'desc'));
+                    onSnapshot(toursQuery, (snapshot) => {
+                        this.tours = snapshot.docs.map(doc => ({
+                            id: doc.id,
+                            ...doc.data()
+                        }));
+                        this.loading = false;
+                    });
+                },
+
+                get filteredTours() {
+                    if (this.selectedCategory === 'all') return this.tours;
+                    return this.tours.filter(t => t.category.toLowerCase() === this.selectedCategory.toLowerCase());
+                }
+            }));
+        });
+    </script>
 </head>
-<body class="bg-gray-50" x-data="{ 
-    mobileMenuOpen: false,
-    selectedCategory: 'all',
-    tours: [
-        { id: 1, title: 'Cape Coast Castle Tour', category: 'educational', price: 150, image: 'https://images.unsplash.com/photo-1620052739343-470a7f05359a?auto=format&fit=crop&q=80&w=600', description: 'Explore the historic Cape Coast and Elmina castles.' },
-        { id: 2, title: 'Kakum Canopy Walk', category: 'adventure', price: 120, image: 'https://images.unsplash.com/photo-1590059300300-8446908502f6?auto=format&fit=crop&q=80&w=600', description: 'Walk among the treetops in Kakum National Park.' },
-        { id: 3, title: 'Mole Safari Adventure', category: 'wildlife', price: 450, image: 'https://images.unsplash.com/photo-1547471080-7cc2caa01a7e?auto=format&fit=crop&q=80&w=600', description: 'See elephants and exotic birds in Northern Ghana.' },
-        { id: 4, title: 'Boti Falls Escape', category: 'nature', price: 100, image: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&q=80&w=600', description: 'Visit the twin falls and the mysterious umbrella rock.' }
-    ],
-    get filteredTours() {
-        if (this.selectedCategory === 'all') return this.tours;
-        return this.tours.filter(t => t.category === this.selectedCategory);
-    }
-}">
+<body class="bg-gray-50" x-data="toursPage">
 
     <!-- Header / Navbar -->
     <header class="bg-white shadow-sm sticky top-0 z-50">
@@ -91,8 +102,14 @@
         <!-- Tours List -->
         <section class="py-16">
             <div class="container mx-auto px-4">
+                <!-- Loading State -->
+                <div x-show="loading" class="text-center py-20">
+                    <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-lonash-blue border-t-transparent"></div>
+                    <p class="mt-4 text-gray-600 font-bold">Loading amazing tours...</p>
+                </div>
+
                 <!-- Tour Cards Grid -->
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" x-show="filteredTours.length > 0">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" x-show="!loading && filteredTours.length > 0">
                     <template x-for="tour in filteredTours" :key="tour.id">
                         <div class="bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition group border">
                             <div class="relative h-64 overflow-hidden">

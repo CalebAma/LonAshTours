@@ -19,52 +19,63 @@
     </script>
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Inter', sans-serif; }
-        h1, h2, h3, .font-heading { font-family: 'Poppins', sans-serif; }
-        [x-cloak] { display: none !important; }
-    </style>
+    <script type="module">
+        import { db, collection, addDoc, getDocs, query, orderBy, onSnapshot } from './assets/js/firebase-config.js';
+
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('bookingForm', () => ({
+                mobileMenuOpen: false,
+                step: 1,
+                loading: false,
+                bookingData: {
+                    name: '',
+                    email: '',
+                    phone: '',
+                    tourId: '',
+                    date: '',
+                    travelers: 1,
+                    message: '',
+                    paymentMethod: 'arrival'
+                },
+                tours: [],
+                
+                async init() {
+                    // Fetch tours from Firestore
+                    const toursQuery = query(collection(db, 'tours'), orderBy('createdAt', 'desc'));
+                    onSnapshot(toursQuery, (snapshot) => {
+                        this.tours = snapshot.docs.map(doc => ({
+                            id: doc.id,
+                            ...doc.data()
+                        }));
+                    });
+                },
+
+                async submitBooking() {
+                    this.loading = true;
+                    try {
+                        const selectedTour = this.tours.find(t => t.id === this.bookingData.tourId);
+                        const tourTitle = selectedTour ? selectedTour.title : 'Custom Package';
+                        
+                        await addDoc(collection(db, 'bookings'), {
+                            ...this.bookingData,
+                            tour: tourTitle,
+                            status: 'Pending',
+                            createdAt: new Date().toISOString()
+                        });
+                        
+                        this.step = 3;
+                    } catch (err) {
+                        alert('Booking failed: ' + err.message);
+                        console.error(err);
+                    } finally {
+                        this.loading = false;
+                    }
+                }
+            }));
+        });
+    </script>
 </head>
-<body class="bg-gray-50" x-data="{ 
-    mobileMenuOpen: false,
-    step: 1,
-    bookingData: {
-        name: '',
-        email: '',
-        phone: '',
-        tourId: '',
-        date: '',
-        travelers: 1,
-        message: '',
-        paymentMethod: 'arrival'
-    },
-    tours: [
-        { id: '1', title: 'Cape Coast Castle Tour' },
-        { id: '2', title: 'Kakum Canopy Walk' },
-        { id: '3', title: 'Mole Safari Adventure' },
-        { id: '4', title: 'Boti Falls Escape' },
-        { id: 'custom', title: 'Custom Package' }
-    ],
-    submitBooking() {
-        // Save booking to localStorage for real-time admin view
-        const bookings = JSON.parse(localStorage.getItem('lonash_bookings') || '[]');
-        const newBooking = {
-            id: 'BK-' + Math.floor(1000 + Math.random() * 9000),
-            name: this.bookingData.name,
-            email: this.bookingData.email,
-            phone: this.bookingData.phone,
-            tour: this.tours.find(t => t.id === this.bookingData.tourId)?.title || 'Custom Package',
-            date: this.bookingData.date,
-            status: 'Pending',
-            createdAt: new Date().toISOString()
-        };
-        bookings.push(newBooking);
-        localStorage.setItem('lonash_bookings', JSON.stringify(bookings));
-        
-        console.log('Booking submitted:', newBooking);
-        this.step = 3;
-    }
-}">
+<body class="bg-gray-50" x-data="bookingForm">
 
     <!-- Header / Navbar -->
     <header class="bg-white shadow-sm sticky top-0 z-50">
