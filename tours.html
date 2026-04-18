@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tour Packages | LonAsh Tours</title>
+    <meta name="description" content="Browse our curated tour packages in Ghana. From adventure to culture, find the perfect trip with LonAsh Tours.">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -28,23 +29,195 @@
             Alpine.data('toursPage', () => ({
                 mobileMenuOpen: false,
                 selectedCategory: 'all',
+                selectedDuration: 'all',
+                searchQuery: '',
                 tours: [],
                 loading: true,
+                selectedTour: null,
+                showModal: false,
+                sortBy: 'featured',
 
                 async init() {
-                    const toursQuery = query(collection(db, 'tours'), orderBy('createdAt', 'desc'));
-                    onSnapshot(toursQuery, (snapshot) => {
-                        this.tours = snapshot.docs.map(doc => ({
-                            id: doc.id,
-                            ...doc.data()
-                        }));
+                    // Check if Firebase is in mock mode
+                    if (db._mock) {
+                        console.log('Using sample tour data');
+                        this.tours = this.getSampleTours();
                         this.loading = false;
-                    });
+                        return;
+                    }
+                    
+                    try {
+                        const toursQuery = query(collection(db, 'tours'), orderBy('createdAt', 'desc'));
+                        onSnapshot(toursQuery, (snapshot) => {
+                            this.tours = snapshot.docs.map(doc => ({
+                                id: doc.id,
+                                ...doc.data()
+                            }));
+                            this.loading = false;
+                        }, (error) => {
+                            console.error('Error loading tours:', error);
+                            this.tours = this.getSampleTours();
+                            this.loading = false;
+                        });
+                    } catch (error) {
+                        console.error('Error initializing tours:', error);
+                        this.tours = this.getSampleTours();
+                        this.loading = false;
+                    }
+                },
+
+                getSampleTours() {
+                    return [
+                        {
+                            id: 'tour-1',
+                            title: 'Cape Coast Castle & Elmina Tour',
+                            category: 'Educational',
+                            price: 450,
+                            duration: '1 Day',
+                            featured: true,
+                            image: 'https://images.unsplash.com/photo-1590059300300-8446908502f6?auto=format&fit=crop&q=80&w=800',
+                            description: 'Explore the historic Cape Coast Castle and Elmina Castle, UNESCO World Heritage sites that tell the story of Ghana\'s past.',
+                            highlights: ['Cape Coast Castle', 'Elmina Castle', 'Fish Market'],
+                            includes: ['Professional guide', 'Transportation', 'Lunch', 'Entrance fees'],
+                            createdAt: new Date().toISOString()
+                        },
+                        {
+                            id: 'tour-2',
+                            title: 'Kakum National Park Canopy Walk',
+                            category: 'Adventure',
+                            price: 320,
+                            duration: '1 Day',
+                            featured: true,
+                            image: 'https://images.unsplash.com/photo-1516426122078-c23e76319801?auto=format&fit=crop&q=80&w=800',
+                            description: 'Experience the thrill of walking among the treetops on the famous canopy walkway at Kakum National Park.',
+                            highlights: ['Canopy Walkway', 'Rainforest Hike', 'Wildlife Viewing'],
+                            includes: ['Park entrance', 'Guide', 'Safety equipment', 'Water'],
+                            createdAt: new Date().toISOString()
+                        },
+                        {
+                            id: 'tour-3',
+                            title: 'Accra City Experience',
+                            category: 'Cultural',
+                            price: 380,
+                            duration: '1 Day',
+                            featured: false,
+                            image: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&q=80&w=800',
+                            description: 'Discover the vibrant capital city of Ghana with visits to historical sites, markets, and cultural centers.',
+                            highlights: ['Independence Square', 'Makola Market', 'Arts Centre'],
+                            includes: ['Air-conditioned vehicle', 'Local guide', 'Bottled water', 'Snacks'],
+                            createdAt: new Date().toISOString()
+                        },
+                        {
+                            id: 'tour-4',
+                            title: 'Mole National Park Safari',
+                            category: 'Wildlife',
+                            price: 1200,
+                            duration: '3 Days',
+                            featured: true,
+                            image: 'https://images.unsplash.com/photo-1547471080-7cc2caa01a7e?auto=format&fit=crop&q=80&w=800',
+                            description: 'An unforgettable safari experience in Ghana\'s largest wildlife refuge. See elephants, antelopes, and more.',
+                            highlights: ['Elephant sightings', 'Walking safari', 'Bird watching', 'Larabanga Mosque'],
+                            includes: ['2 nights accommodation', 'All meals', 'Park fees', 'Expert guides'],
+                            createdAt: new Date().toISOString()
+                        },
+                        {
+                            id: 'tour-5',
+                            title: 'Volta Region Waterfalls',
+                            category: 'Nature',
+                            price: 550,
+                            duration: '2 Days',
+                            featured: false,
+                            image: 'https://images.unsplash.com/photo-1432405972618-c60b0225b8f9?auto=format&fit=crop&q=80&w=800',
+                            description: 'Visit the stunning Wli Waterfalls, the highest in West Africa, and enjoy the serene beauty of the Volta Region.',
+                            highlights: ['Wli Waterfalls', 'Tagbo Falls', 'Local villages'],
+                            includes: ['1 night accommodation', 'Meals', 'Transportation', 'Guide'],
+                            createdAt: new Date().toISOString()
+                        },
+                        {
+                            id: 'tour-6',
+                            title: 'Ashanti Cultural Heritage',
+                            category: 'Cultural',
+                            price: 680,
+                            duration: '2 Days',
+                            featured: false,
+                            image: 'https://images.unsplash.com/photo-1489493887464-892be6d1daae?auto=format&fit=crop&q=80&w=800',
+                            description: 'Immerse yourself in Ashanti culture with visits to the Manhyia Palace, craft villages, and traditional ceremonies.',
+                            highlights: ['Manhyia Palace', 'Kejetia Market', 'Adanwomase Kente'],
+                            includes: ['1 night hotel', 'Breakfast', 'Professional guide', 'All entrance fees'],
+                            createdAt: new Date().toISOString()
+                        }
+                    ];
                 },
 
                 get filteredTours() {
-                    if (this.selectedCategory === 'all') return this.tours;
-                    return this.tours.filter(t => t.category.toLowerCase() === this.selectedCategory.toLowerCase());
+                    let filtered = this.tours;
+                    
+                    // Category filter
+                    if (this.selectedCategory !== 'all') {
+                        filtered = filtered.filter(t => t.category?.toLowerCase() === this.selectedCategory.toLowerCase());
+                    }
+                    
+                    // Duration filter
+                    if (this.selectedDuration !== 'all') {
+                        filtered = filtered.filter(t => {
+                            if (!t.duration) return false;
+                            const duration = t.duration.toLowerCase();
+                            if (this.selectedDuration === 'short') return duration.includes('day') && parseInt(duration) <= 2;
+                            if (this.selectedDuration === 'medium') {
+                                const days = parseInt(duration);
+                                return days >= 3 && days <= 5;
+                            }
+                            if (this.selectedDuration === 'long') {
+                                const days = parseInt(duration);
+                                return days >= 6;
+                            }
+                            return true;
+                        });
+                    }
+                    
+                    // Search filter
+                    if (this.searchQuery) {
+                        const query = this.searchQuery.toLowerCase();
+                        filtered = filtered.filter(t => 
+                            t.title?.toLowerCase().includes(query) || 
+                            t.description?.toLowerCase().includes(query) ||
+                            t.duration?.toLowerCase().includes(query)
+                        );
+                    }
+
+                    // Sort
+                    if (this.sortBy === 'featured') {
+                        filtered = [...filtered].sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0));
+                    } else if (this.sortBy === 'price-low') {
+                        filtered = [...filtered].sort((a, b) => (a.price || 0) - (b.price || 0));
+                    } else if (this.sortBy === 'price-high') {
+                        filtered = [...filtered].sort((a, b) => (b.price || 0) - (a.price || 0));
+                    }
+                    
+                    return filtered;
+                },
+
+                get featuredTours() {
+                    return this.tours.filter(t => t.featured);
+                },
+
+                openTourDetails(tour) {
+                    this.selectedTour = tour;
+                    this.showModal = true;
+                    document.body.style.overflow = 'hidden';
+                },
+
+                closeModal() {
+                    this.showModal = false;
+                    this.selectedTour = null;
+                    document.body.style.overflow = '';
+                },
+
+                formatPrice(price) {
+                    return new Intl.NumberFormat('en-GH', { 
+                        style: 'currency', 
+                        currency: 'GHS' 
+                    }).format(price || 0);
                 }
             }));
         });
@@ -106,14 +279,51 @@
         </section>
 
         <!-- Filters -->
-        <section class="py-8 bg-white border-b sticky top-[72px] z-40">
+        <section class="py-8 bg-white border-b sticky top-[72px] z-40 shadow-sm">
             <div class="container mx-auto px-4">
-                <div class="flex flex-wrap items-center justify-center gap-4">
-                    <button @click="selectedCategory = 'all'" :class="selectedCategory === 'all' ? 'bg-lonash-blue text-white' : 'bg-gray-100 text-gray-700'" class="px-6 py-2 rounded-full font-medium transition">All Tours</button>
-                    <button @click="selectedCategory = 'adventure'" :class="selectedCategory === 'adventure' ? 'bg-lonash-blue text-white' : 'bg-gray-100 text-gray-700'" class="px-6 py-2 rounded-full font-medium transition">Adventure</button>
-                    <button @click="selectedCategory = 'educational'" :class="selectedCategory === 'educational' ? 'bg-lonash-blue text-white' : 'bg-gray-100 text-gray-700'" class="px-6 py-2 rounded-full font-medium transition">Educational</button>
-                    <button @click="selectedCategory = 'wildlife'" :class="selectedCategory === 'wildlife' ? 'bg-lonash-blue text-white' : 'bg-gray-100 text-gray-700'" class="px-6 py-2 rounded-full font-medium transition">Wildlife</button>
-                    <button @click="selectedCategory = 'nature'" :class="selectedCategory === 'nature' ? 'bg-lonash-blue text-white' : 'bg-gray-100 text-gray-700'" class="px-6 py-2 rounded-full font-medium transition">Nature</button>
+                <div class="flex flex-col gap-4">
+                    <!-- Top Row: Categories & Search -->
+                    <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+                        <!-- Category Buttons -->
+                        <div class="flex flex-wrap items-center justify-center gap-2">
+                            <button @click="selectedCategory = 'all'" :class="selectedCategory === 'all' ? 'bg-lonash-blue text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-4 py-2 rounded-full font-medium transition text-sm">All Tours</button>
+                            <button @click="selectedCategory = 'adventure'" :class="selectedCategory === 'adventure' ? 'bg-lonash-blue text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-4 py-2 rounded-full font-medium transition text-sm">Adventure</button>
+                            <button @click="selectedCategory = 'educational'" :class="selectedCategory === 'educational' ? 'bg-lonash-blue text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-4 py-2 rounded-full font-medium transition text-sm">Educational</button>
+                            <button @click="selectedCategory = 'wildlife'" :class="selectedCategory === 'wildlife' ? 'bg-lonash-blue text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-4 py-2 rounded-full font-medium transition text-sm">Wildlife</button>
+                            <button @click="selectedCategory = 'nature'" :class="selectedCategory === 'nature' ? 'bg-lonash-blue text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-4 py-2 rounded-full font-medium transition text-sm">Nature</button>
+                            <button @click="selectedCategory = 'cultural'" :class="selectedCategory === 'cultural' ? 'bg-lonash-blue text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-4 py-2 rounded-full font-medium transition text-sm">Cultural</button>
+                        </div>
+
+                        <!-- Search Bar -->
+                        <div class="relative w-full md:w-64">
+                            <input type="text" x-model="searchQuery" placeholder="Search tours..." class="w-full pl-10 pr-4 py-2 rounded-full bg-gray-100 border-none focus:ring-2 focus:ring-lonash-blue focus:bg-white transition text-sm outline-none">
+                            <svg class="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        </div>
+                    </div>
+                    
+                    <!-- Bottom Row: Duration Filter & Sort -->
+                    <div class="flex flex-col md:flex-row items-center justify-between gap-4 pt-2 border-t">
+                        <!-- Duration Filter -->
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm text-gray-500 font-medium">Duration:</span>
+                            <div class="flex flex-wrap gap-2">
+                                <button @click="selectedDuration = 'all'" :class="selectedDuration === 'all' ? 'bg-lonash-orange text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-3 py-1 rounded-full text-xs font-medium transition">All</button>
+                                <button @click="selectedDuration = 'short'" :class="selectedDuration === 'short' ? 'bg-lonash-orange text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-3 py-1 rounded-full text-xs font-medium transition">1-2 Days</button>
+                                <button @click="selectedDuration = 'medium'" :class="selectedDuration === 'medium' ? 'bg-lonash-orange text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-3 py-1 rounded-full text-xs font-medium transition">3-5 Days</button>
+                                <button @click="selectedDuration = 'long'" :class="selectedDuration === 'long' ? 'bg-lonash-orange text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-3 py-1 rounded-full text-xs font-medium transition">6+ Days</button>
+                            </div>
+                        </div>
+                        
+                        <!-- Sort -->
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm text-gray-500 font-medium">Sort by:</span>
+                            <select x-model="sortBy" class="px-3 py-1 rounded-full bg-gray-100 text-sm border-none focus:ring-2 focus:ring-lonash-blue outline-none cursor-pointer">
+                                <option value="featured">Featured</option>
+                                <option value="price-low">Price: Low to High</option>
+                                <option value="price-high">Price: High to Low</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -127,28 +337,76 @@
                     <p class="mt-4 text-gray-600 font-bold">Loading amazing tours...</p>
                 </div>
 
+                <!-- Results Count -->
+                <div class="mb-6 flex items-center justify-between">
+                    <p class="text-gray-600">
+                        Showing <span class="font-bold text-lonash-blue" x-text="filteredTours.length"></span> 
+                        tour<span x-show="filteredTours.length !== 1">s</span>
+                    </p>
+                    <a href="custom-trip.html" class="text-lonash-orange font-medium hover:underline flex items-center">
+                        <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                        </svg>
+                        Can't find what you want? Customize your trip
+                    </a>
+                </div>
+
                 <!-- Tour Cards Grid -->
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" x-show="!loading && filteredTours.length > 0">
                     <template x-for="tour in filteredTours" :key="tour.id">
-                        <div class="bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition group border">
-                            <div class="relative h-64 overflow-hidden">
-                                <img :src="tour.image || 'https://images.unsplash.com/photo-1590059300300-8446908502f6?auto=format&fit=crop&q=80&w=600'" :alt="tour.title" class="w-full h-full object-cover group-hover:scale-110 transition duration-500">
-                                <div class="absolute top-4 right-4 bg-lonash-orange text-white px-4 py-1 rounded-full font-bold shadow-md">
-                                    GH₵<span x-text="tour.price"></span>
+                        <div class="bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 group border hover:-translate-y-1">
+                            <div class="relative h-56 overflow-hidden">
+                                <img :src="tour.image || 'https://images.unsplash.com/photo-1590059300300-8446908502f6?auto=format&fit=crop&q=80&w=600'" 
+                                     :alt="tour.title" 
+                                     class="w-full h-full object-cover group-hover:scale-110 transition duration-500"
+                                     loading="lazy">
+                                
+                                <!-- Featured Badge -->
+                                <div x-show="tour.featured" 
+                                     class="absolute top-3 left-3 bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg flex items-center">
+                                    <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+                                    </svg>
+                                    Featured
                                 </div>
-                                <div class="absolute top-4 left-4 bg-white/90 backdrop-blur-sm text-lonash-blue px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wider">
-                                    <span x-text="tour.category"></span>
+                                
+                                <!-- Price Badge -->
+                                <div class="absolute top-3 right-3 bg-lonash-orange text-white px-4 py-1.5 rounded-full font-bold shadow-lg text-sm">
+                                    <span x-text="formatPrice(tour.price)"></span>
+                                </div>
+                                
+                                <!-- Category Badge -->
+                                <div class="absolute bottom-3 left-3 bg-white/90 backdrop-blur-sm text-lonash-blue px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider shadow-sm">
+                                    <span x-text="tour.category || 'Tour'"></span>
                                 </div>
                             </div>
-                            <div class="p-6">
-                                <h3 class="text-xl font-bold text-lonash-blue mb-2" x-text="tour.title"></h3>
-                                <p class="text-gray-600 mb-6 line-clamp-2" x-text="tour.description || 'Experience the beauty and culture of Ghana with this specially curated tour package.'"></p>
-                                <div class="flex items-center justify-between pt-4 border-t">
+                            
+                            <div class="p-5">
+                                <!-- Title & Duration -->
+                                <div class="mb-3">
+                                    <h3 class="text-lg font-bold text-lonash-blue mb-1 line-clamp-1" x-text="tour.title"></h3>
                                     <div class="flex items-center text-gray-500 text-sm">
-                                        <svg class="w-4 h-4 mr-1 text-lonash-orange" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
-                                        <span>New Tour</span>
+                                        <svg class="w-4 h-4 mr-1 text-lonash-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                        <span x-text="tour.duration || 'Duration varies'"></span>
                                     </div>
-                                    <a :href="'booking.html?tour=' + tour.id" class="text-lonash-blue font-bold hover:text-lonash-orange transition">View Details →</a>
+                                </div>
+                                
+                                <!-- Description -->
+                                <p class="text-gray-600 text-sm mb-4 line-clamp-2" 
+                                   x-text="tour.description || 'Experience the beauty and culture of Ghana with this specially curated tour package.'"></p>
+                                
+                                <!-- Action Buttons -->
+                                <div class="flex gap-3 pt-4 border-t">
+                                    <button @click="openTourDetails(tour)" 
+                                            class="flex-1 bg-gray-100 text-gray-700 py-2.5 rounded-xl font-bold text-sm hover:bg-gray-200 transition text-center">
+                                        View Details
+                                    </button>
+                                    <a :href="'booking.html?tour=' + tour.id" 
+                                       class="flex-1 bg-lonash-blue text-white py-2.5 rounded-xl font-bold text-sm hover:bg-blue-900 transition text-center flex items-center justify-center">
+                                        Book Now
+                                    </a>
                                 </div>
                             </div>
                         </div>
@@ -156,16 +414,136 @@
                 </div>
 
                 <!-- Empty State -->
-                <div x-show="filteredTours.length === 0" class="text-center py-20 bg-white rounded-2xl shadow-sm border border-dashed border-gray-300">
+                <div x-show="filteredTours.length === 0 && !loading" class="text-center py-20 bg-white rounded-2xl shadow-sm border border-dashed border-gray-300">
                     <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <svg class="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
+                        <svg class="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+                        </svg>
                     </div>
-                    <h3 class="text-2xl font-bold text-gray-800 mb-2">No tours available yet</h3>
-                    <p class="text-gray-600 mb-8 max-w-md mx-auto">We are currently updating our packages for this category. Check back soon or contact us for a custom plan.</p>
-                    <a href="contact.html" class="bg-lonash-blue text-white px-8 py-3 rounded-full font-bold hover:bg-blue-900 transition">Contact Us for Custom Trips</a>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-2">No tours found</h3>
+                    <p class="text-gray-600 mb-4 max-w-md mx-auto">No tours match your current filters. Try adjusting your search criteria.</p>
+                    <div class="flex gap-4 justify-center">
+                        <button @click="selectedCategory = 'all'; selectedDuration = 'all'; searchQuery = ''" 
+                                class="bg-lonash-blue text-white px-6 py-2 rounded-full font-bold hover:bg-blue-900 transition">
+                            Clear Filters
+                        </button>
+                        <a href="custom-trip.html" class="bg-lonash-orange text-white px-6 py-2 rounded-full font-bold hover:bg-orange-600 transition">
+                            Customize Your Trip
+                        </a>
+                    </div>
                 </div>
             </div>
         </section>
+
+        <!-- Tour Details Modal -->
+        <div x-show="showModal" x-cloak 
+             class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+             @click.self="closeModal()">
+            <div x-show="showModal" 
+                 x-transition:enter="transition ease-out duration-300"
+                 x-transition:enter-start="opacity-0 scale-95"
+                 x-transition:enter-end="opacity-100 scale-100"
+                 x-transition:leave="transition ease-in duration-200"
+                 x-transition:leave-start="opacity-100 scale-100"
+                 x-transition:leave-end="opacity-0 scale-95"
+                 class="bg-white rounded-3xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl">
+                
+                <div x-show="selectedTour">
+                    <!-- Modal Header Image -->
+                    <div class="relative h-64 md:h-80">
+                        <img :src="selectedTour?.image || 'https://images.unsplash.com/photo-1590059300300-8446908502f6?auto=format&fit=crop&q=80&w=800'" 
+                             :alt="selectedTour?.title" 
+                             class="w-full h-full object-cover">
+                        <button @click="closeModal()" 
+                                class="absolute top-4 right-4 bg-white/90 backdrop-blur-sm p-2 rounded-full hover:bg-white transition shadow-lg">
+                            <svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                        
+                        <!-- Featured Badge -->
+                        <div x-show="selectedTour?.featured" 
+                             class="absolute top-4 left-4 bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-4 py-1.5 rounded-full text-sm font-bold shadow-lg flex items-center">
+                            <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+                            </svg>
+                            Featured Tour
+                        </div>
+                        
+                        <!-- Price Overlay -->
+                        <div class="absolute bottom-4 right-4 bg-lonash-orange text-white px-6 py-2 rounded-full font-bold text-xl shadow-lg">
+                            <span x-text="formatPrice(selectedTour?.price)"></span>
+                            <span class="text-sm font-normal">/person</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Modal Content -->
+                    <div class="p-6 md:p-8">
+                        <!-- Title & Meta -->
+                        <div class="mb-6">
+                            <div class="flex flex-wrap items-center gap-3 mb-3">
+                                <span class="bg-lonash-blue/10 text-lonash-blue px-3 py-1 rounded-full text-xs font-bold uppercase" 
+                                      x-text="selectedTour?.category || 'Tour'"></span>
+                                <span class="flex items-center text-gray-500 text-sm">
+                                    <svg class="w-4 h-4 mr-1 text-lonash-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    <span x-text="selectedTour?.duration || 'Duration varies'"></span>
+                                </span>
+                            </div>
+                            <h2 class="text-2xl md:text-3xl font-bold text-gray-900" x-text="selectedTour?.title"></h2>
+                        </div>
+                        
+                        <!-- Description -->
+                        <div class="mb-6">
+                            <h3 class="font-bold text-gray-900 mb-2">About this tour</h3>
+                            <p class="text-gray-600 leading-relaxed" x-text="selectedTour?.description || 'Experience the beauty and culture of Ghana with this specially curated tour package.'"></p>
+                        </div>
+                        
+                        <!-- Highlights (if available) -->
+                        <div x-show="selectedTour?.highlights" class="mb-6">
+                            <h3 class="font-bold text-gray-900 mb-3">Highlights</h3>
+                            <ul class="space-y-2">
+                                <template x-for="highlight in selectedTour?.highlights" :key="highlight">
+                                    <li class="flex items-start">
+                                        <svg class="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                        </svg>
+                                        <span class="text-gray-600" x-text="highlight"></span>
+                                    </li>
+                                </template>
+                            </ul>
+                        </div>
+                        
+                        <!-- Includes (if available) -->
+                        <div x-show="selectedTour?.includes" class="mb-6">
+                            <h3 class="font-bold text-gray-900 mb-3">What's Included</h3>
+                            <div class="flex flex-wrap gap-2">
+                                <template x-for="item in selectedTour?.includes" :key="item">
+                                    <span class="bg-green-50 text-green-700 px-3 py-1 rounded-full text-sm" x-text="item"></span>
+                                </template>
+                            </div>
+                        </div>
+                        
+                        <!-- CTA Buttons -->
+                        <div class="flex flex-col sm:flex-row gap-4 pt-6 border-t">
+                            <button @click="closeModal()" 
+                                    class="flex-1 border-2 border-gray-200 text-gray-600 py-3.5 rounded-xl font-bold hover:bg-gray-50 transition">
+                                Close
+                            </button>
+                            <a :href="'booking.html?tour=' + selectedTour?.id" 
+                               @click="closeModal()"
+                               class="flex-1 bg-lonash-orange text-white py-3.5 rounded-xl font-bold hover:bg-orange-600 transition text-center flex items-center justify-center">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                </svg>
+                                Book This Tour
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </main>
 
     <!-- Footer (Simplified) -->

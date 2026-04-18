@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customize Your Trip | LonAsh Tours</title>
+    <meta name="description" content="Create your dream tour package in Ghana. Customize destinations, activities, duration, and budget with LonAsh Tours.">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'lonash-blue': '#1E40AF',
+                        'lonash-orange': '#F97316',
+                    }
+                }
+            }
+        }
+    </script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/styles.css">
+    <script src="assets/js/config.js"></script>
+    
+    <script type="module">
+        import { db, collection, addDoc } from './assets/js/firebase-config.js';
+
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('customTripForm', () => ({
+                mobileMenuOpen: false,
+                step: 1,
+                loading: false,
+                submitted: false,
+                reference: '',
+                
+                formData: {
+                    name: '',
+                    email: '',
+                    phone: '',
+                    groupSize: 1,
+                    
+                    // Trip Preferences
+                    tripType: 'adventure',
+                    destinations: [],
+                    duration: '3-5',
+                    budget: 'mid',
+                    
+                    // Accommodation
+                    accommodationType: 'hotel',
+                    roomPreference: 'standard',
+                    
+                    // Activities
+                    activities: [],
+                    specialInterests: '',
+                    
+                    // Travel Details
+                    arrivalDate: '',
+                    departureDate: '',
+                    pickupLocation: '',
+                    
+                    // Additional
+                    dietaryRequirements: '',
+                    accessibilityNeeds: '',
+                    additionalRequests: ''
+                },
+
+                destinations: [
+                    { id: 'accra', name: 'Greater Accra', region: 'Greater Accra', highlights: ['Independence Square', 'Makola Market', 'Labadi Beach'] },
+                    { id: 'cape-coast', name: 'Cape Coast', region: 'Central', highlights: ['Cape Coast Castle', 'Kakum National Park', 'Elmina Castle'] },
+                    { id: 'kumasi', name: 'Kumasi', region: 'Ashanti', highlights: ['Manhyia Palace', 'Kejetia Market', 'Cultural Centre'] },
+                    { id: 'takoradi', name: 'Takoradi', region: 'Western', highlights: ['Axim Beach', 'Nzulezo', 'Ankasa Reserve'] },
+                    { id: 'tamale', name: 'Tamale', region: 'Northern', highlights: ['Mole National Park', 'Larabanga Mosque', 'Sahel Region'] },
+                    { id: 'ho', name: 'Ho', region: 'Volta', highlights: ['Wli Waterfalls', 'Mount Afadja', 'Tafi Atome'] },
+                    { id: 'sunyani', name: 'Sunyani', region: 'Bono', highlights: ['Kintampo Falls', 'Boabeng Fiema', 'Fuller Falls'] },
+                    { id: 'bolga', name: 'Bolgatanga', region: 'Upper East', highlights: ['Paga Crocodile Pond', 'Tongo Hills', 'Sirigu Pottery'] }
+                ],
+
+                activitiesList: [
+                    { id: 'wildlife', name: 'Wildlife Safari', icon: '🦁', category: 'nature' },
+                    { id: 'hiking', name: 'Hiking & Trekking', icon: '🥾', category: 'adventure' },
+                    { id: 'cultural', name: 'Cultural Tours', icon: '🏛️', category: 'culture' },
+                    { id: 'beach', name: 'Beach & Water Sports', icon: '🏖️', category: 'leisure' },
+                    { id: 'historical', name: 'Historical Sites', icon: '🏰', category: 'culture' },
+                    { id: 'food', name: 'Food & Culinary', icon: '🍲', category: 'culture' },
+                    { id: 'photography', name: 'Photography Tours', icon: '📷', category: 'adventure' },
+                    { id: 'camping', name: 'Camping & Glamping', icon: '⛺', category: 'adventure' },
+                    { id: 'music', name: 'Music & Dance', icon: '🎵', category: 'culture' },
+                    { id: 'art', name: 'Arts & Crafts', icon: '🎨', category: 'culture' },
+                    { id: 'wellness', name: 'Wellness & Spa', icon: '🧘', category: 'leisure' },
+                    { id: 'nightlife', name: 'Nightlife & Entertainment', icon: '🌃', category: 'leisure' }
+                ],
+
+                toggleDestination(id) {
+                    const index = this.formData.destinations.indexOf(id);
+                    if (index > -1) {
+                        this.formData.destinations.splice(index, 1);
+                    } else {
+                        this.formData.destinations.push(id);
+                    }
+                },
+
+                toggleActivity(id) {
+                    const index = this.formData.activities.indexOf(id);
+                    if (index > -1) {
+                        this.formData.activities.splice(index, 1);
+                    } else {
+                        this.formData.activities.push(id);
+                    }
+                },
+
+                isSelected(type, id) {
+                    return this.formData[type].includes(id);
+                },
+
+                validateStep(step) {
+                    switch(step) {
+                        case 1:
+                            if (!this.formData.name || this.formData.name.length < 2) {
+                                alert('Please enter your full name');
+                                return false;
+                            }
+                            if (!this.formData.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.formData.email)) {
+                                alert('Please enter a valid email address');
+                                return false;
+                            }
+                            if (!this.formData.phone || !this.formData.phone.match(/^(\+233|0)[2-9]\d{8}$/)) {
+                                alert('Please enter a valid Ghana phone number');
+                                return false;
+                            }
+                            return true;
+                        
+                        case 2:
+                            if (this.formData.destinations.length === 0) {
+                                alert('Please select at least one destination');
+                                return false;
+                            }
+                            if (this.formData.activities.length === 0) {
+                                alert('Please select at least one activity');
+                                return false;
+                            }
+                            return true;
+                        
+                        case 3:
+                            if (!this.formData.arrivalDate) {
+                                alert('Please select an arrival date');
+                                return false;
+                            }
+                            return true;
+                        
+                        default:
+                            return true;
+                    }
+                },
+
+                nextStep() {
+                    if (this.validateStep(this.step)) {
+                        this.step++;
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
+                },
+
+                prevStep() {
+                    this.step--;
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                },
+
+                async submitRequest() {
+                    this.loading = true;
+                    try {
+                        const ref = 'CUST-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+                        
+                        // Check if Firebase is in mock mode
+                        if (db._mock) {
+                            console.log('Demo mode: Simulating submission');
+                            // Simulate successful submission
+                            await new Promise(resolve => setTimeout(resolve, 1000));
+                        } else {
+                            await addDoc(collection(db, 'customTrips'), {
+                                ...this.formData,
+                                status: 'Pending Review',
+                                reference: ref,
+                                createdAt: new Date().toISOString()
+                            });
+                        }
+                        
+                        this.reference = ref;
+                        this.submitted = true;
+                        
+                        // Send WhatsApp notification
+                        this.sendWhatsAppNotification();
+                    } catch (err) {
+                        alert('Failed to submit request: ' + err.message);
+                        console.error(err);
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+
+                sendWhatsAppNotification() {
+                    const phone = '233505402562';
+                    const message = `Hello LonAsh Tours! I just submitted a custom trip request (Ref: ${this.reference}). Please contact me to discuss my travel plans.`;
+                    const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+                    
+                    // Open WhatsApp in new tab
+                    setTimeout(() => {
+                        window.open(url, '_blank');
+                    }, 1500);
+                },
+
+                get selectedDestinationsList() {
+                    return this.destinations.filter(d => this.formData.destinations.includes(d.id));
+                },
+
+                get selectedActivitiesList() {
+                    return this.activitiesList.filter(a => this.formData.activities.includes(a.id));
+                },
+
+                get budgetLabel() {
+                    const labels = {
+                        budget: 'Budget-Friendly',
+                        mid: 'Mid-Range',
+                        luxury: 'Luxury Experience',
+                        ultra: 'Ultra-Luxury'
+                    };
+                    return labels[this.formData.budget] || 'Mid-Range';
+                },
+
+                get durationLabel() {
+                    const labels = {
+                        '1-2': '1-2 Days',
+                        '3-5': '3-5 Days',
+                        '6-10': '6-10 Days',
+                        '10+': '10+ Days'
+                    };
+                    return labels[this.formData.duration] || '3-5 Days';
+                }
+            }));
+        });
+    </script>
+</head>
+<body class="bg-gray-50" x-data="customTripForm">
+
+    <!-- Header / Navbar -->
+    <header class="bg-white shadow-sm sticky top-0 z-50">
+        <nav class="container mx-auto px-4 py-4 flex items-center justify-between">
+            <a href="index.html" class="flex items-center space-x-2">
+                <div class="bg-lonash-blue p-2 rounded-lg">
+                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 002 2h1.5a2.5 2.5 0 012.5 2.5V14a2 2 0 002 2h1.065M12 22a10 10 0 100-20 10 10 0 000 20z"></path>
+                    </svg>
+                </div>
+                <span class="text-2xl font-bold text-lonash-blue">LonAsh <span class="text-lonash-orange">Tours</span></span>
+            </a>
+
+            <div class="hidden md:flex items-center space-x-8">
+                <a href="index.html" class="text-gray-700 hover:text-lonash-blue font-medium transition">Home</a>
+                <a href="about.html" class="text-gray-700 hover:text-lonash-blue font-medium transition">About</a>
+                <a href="tours.html" class="text-gray-700 hover:text-lonash-blue font-medium transition">Tours</a>
+                <a href="destinations.html" class="text-gray-700 hover:text-lonash-blue font-medium transition">Destinations</a>
+                <a href="custom-trip.html" class="text-lonash-blue font-bold transition border-b-2 border-lonash-blue">Customize</a>
+                <a href="contact.html" class="text-gray-700 hover:text-lonash-blue font-medium transition">Contact</a>
+                <a href="booking.html" class="bg-lonash-orange text-white px-6 py-2 rounded-full font-bold hover:bg-orange-600 transition">Book Now</a>
+            </div>
+
+            <button @click="mobileMenuOpen = !mobileMenuOpen" class="md:hidden text-gray-700">
+                <svg x-show="!mobileMenuOpen" class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                </svg>
+                <svg x-show="mobileMenuOpen" x-cloak class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </nav>
+
+        <!-- Mobile Menu -->
+        <div x-show="mobileMenuOpen" 
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0 -translate-y-4"
+             x-transition:enter-end="opacity-100 translate-y-0"
+             class="md:hidden bg-white border-t py-4 px-4 space-y-4 shadow-lg absolute w-full">
+            <a href="index.html" class="block text-gray-700 font-medium">Home</a>
+            <a href="about.html" class="block text-gray-700 font-medium">About</a>
+            <a href="tours.html" class="block text-gray-700 font-medium">Tours</a>
+            <a href="destinations.html" class="block text-gray-700 font-medium">Destinations</a>
+            <a href="custom-trip.html" class="block text-lonash-blue font-bold">Customize Trip</a>
+            <a href="contact.html" class="block text-gray-700 font-medium">Contact</a>
+            <a href="booking.html" class="block bg-lonash-orange text-white px-6 py-2 rounded-full font-bold text-center">Book Now</a>
+        </div>
+    </header>
+
+    <main class="py-12 md:py-20">
+        <div class="container mx-auto px-4 max-w-5xl">
+            
+            <!-- Header Section -->
+            <div class="text-center mb-12" x-show="!submitted">
+                <h1 class="text-4xl md:text-5xl font-bold text-lonash-blue mb-4">Customize Your Dream Trip</h1>
+                <p class="text-xl text-gray-600 max-w-2xl mx-auto">Tell us your preferences and we'll create a personalized itinerary just for you.</p>
+            </div>
+
+            <!-- Progress Steps -->
+            <div class="mb-12" x-show="!submitted">
+                <div class="flex items-center justify-between relative">
+                    <div class="absolute inset-0 flex items-center" aria-hidden="true">
+                        <div class="w-full h-1 bg-gray-200 rounded-full"></div>
+                    </div>
+                    <template x-for="i in 4" :key="i">
+                        <div class="relative flex flex-col items-center">
+                            <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all duration-300"
+                                 :class="step >= i ? 'bg-lonash-blue text-white scale-110' : 'bg-white text-gray-400 border-2 border-gray-200'">
+                                <span x-text="i"></span>
+                            </div>
+                            <span class="mt-2 text-xs font-medium" 
+                                  :class="step >= i ? 'text-lonash-blue' : 'text-gray-400'"
+                                  x-text="['Contact', 'Destinations', 'Details', 'Review'][i-1]"></span>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Step 1: Contact Information -->
+            <div x-show="step === 1 && !submitted" class="bg-white rounded-3xl shadow-xl p-8 md:p-12">
+                <h2 class="text-2xl font-bold text-lonash-blue mb-2">Your Contact Details</h2>
+                <p class="text-gray-600 mb-8">Let's start with your basic information.</p>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-bold text-gray-700 mb-2">Full Name *</label>
+                        <input type="text" x-model="formData.name" placeholder="Enter your full name"
+                               class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-lonash-blue outline-none transition">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">Email Address *</label>
+                        <input type="email" x-model="formData.email" placeholder="your@email.com"
+                               class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-lonash-blue outline-none transition">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">Phone Number *</label>
+                        <input type="tel" x-model="formData.phone" placeholder="+233 50 540 2562"
+                               class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-lonash-blue outline-none transition">
+                    </div>
+                    
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-bold text-gray-700 mb-2">Group Size</label>
+                        <div class="flex items-center space-x-4">
+                            <button @click="formData.groupSize > 1 && formData.groupSize--" 
+                                    class="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-xl">-</button>
+                            <span class="text-2xl font-bold text-lonash-blue w-12 text-center" x-text="formData.groupSize"></span>
+                            <button @click="formData.groupSize++" 
+                                    class="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-xl">+</button>
+                            <span class="text-gray-600">traveler(s)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-8 flex justify-end">
+                    <button @click="nextStep()" class="bg-lonash-blue text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-blue-900 transition flex items-center">
+                        Next: Choose Destinations
+                        <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 2: Destinations & Activities -->
+            <div x-show="step === 2 && !submitted" class="bg-white rounded-3xl shadow-xl p-8 md:p-12" x-cloak>
+                <h2 class="text-2xl font-bold text-lonash-blue mb-2">Destinations & Activities</h2>
+                <p class="text-gray-600 mb-8">Select where you want to go and what you'd like to do.</p>
+
+                <!-- Destinations -->
+                <div class="mb-8">
+                    <label class="block text-sm font-bold text-gray-700 mb-4">Select Destinations *</label>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <template x-for="dest in destinations" :key="dest.id">
+                            <div @click="toggleDestination(dest.id)"
+                                 :class="isSelected('destinations', dest.id) ? 'ring-2 ring-lonash-blue bg-blue-50 border-lonash-blue' : 'border-gray-200 hover:border-gray-300'"
+                                 class="p-4 rounded-xl border-2 cursor-pointer transition">
+                                <div class="flex items-start justify-between">
+                                    <div>
+                                        <h4 class="font-bold text-gray-900" x-text="dest.name"></h4>
+                                        <p class="text-sm text-gray-500" x-text="dest.region + ' Region'"></p>
+                                        <div class="mt-2 flex flex-wrap gap-1">
+                                            <template x-for="highlight in dest.highlights.slice(0, 2)" :key="highlight">
+                                                <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded" x-text="highlight"></span>
+                                            </template>
+                                        </div>
+                                    </div>
+                                    <div :class="isSelected('destinations', dest.id) ? 'bg-lonash-blue text-white' : 'bg-gray-200 text-gray-400'"
+                                         class="w-6 h-6 rounded-full flex items-center justify-center">
+                                        <svg x-show="isSelected('destinations', dest.id)" class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Activities -->
+                <div class="mb-8">
+                    <label class="block text-sm font-bold text-gray-700 mb-4">Select Activities *</label>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <template x-for="activity in activitiesList" :key="activity.id">
+                            <div @click="toggleActivity(activity.id)"
+                                 :class="isSelected('activities', activity.id) ? 'ring-2 ring-lonash-blue bg-blue-50 border-lonash-blue' : 'border-gray-200 hover:border-gray-300'"
+                                 class="p-4 rounded-xl border-2 cursor-pointer transition text-center">
+                                <div class="text-3xl mb-2" x-text="activity.icon"></div>
+                                <p class="text-sm font-medium" x-text="activity.name"></p>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Trip Type & Duration -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">Preferred Duration</label>
+                        <select x-model="formData.duration" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-lonash-blue outline-none transition">
+                            <option value="1-2">1-2 Days (Weekend Getaway)</option>
+                            <option value="3-5">3-5 Days (Short Holiday)</option>
+                            <option value="6-10">6-10 Days (Extended Tour)</option>
+                            <option value="10+">10+ Days (Grand Tour)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">Budget Range</label>
+                        <select x-model="formData.budget" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-lonash-blue outline-none transition">
+                            <option value="budget">Budget-Friendly</option>
+                            <option value="mid">Mid-Range</option>
+                            <option value="luxury">Luxury Experience</option>
+                            <option value="ultra">Ultra-Luxury</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Special Interests (Optional)</label>
+                    <textarea x-model="formData.specialInterests" rows="3" 
+                              placeholder="Tell us about any specific interests like photography spots, specific wildlife, cultural experiences, etc."
+                              class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-lonash-blue outline-none transition"></textarea>
+                </div>
+
+                <div class="flex justify-between">
+                    <button @click="prevStep()" class="border-2 border-gray-200 text-gray-600 px-6 py-3 rounded-xl font-bold hover:bg-gray-50 transition">
+                        Back
+                    </button>
+                    <button @click="nextStep()" class="bg-lonash-blue text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-blue-900 transition flex items-center">
+                        Next: Travel Details
+                        <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 3: Travel Details -->
+            <div x-show="step === 3 && !submitted" class="bg-white rounded-3xl shadow-xl p-8 md:p-12" x-cloak>
+                <h2 class="text-2xl font-bold text-lonash-blue mb-2">Travel Details</h2>
+                <p class="text-gray-600 mb-8">When and how would you like to travel?</p>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">Arrival Date *</label>
+                        <input type="date" x-model="formData.arrivalDate"
+                               class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-lonash-blue outline-none transition">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">Departure Date</label>
+                        <input type="date" x-model="formData.departureDate"
+                               class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-lonash-blue outline-none transition">
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Pickup Location</label>
+                    <input type="text" x-model="formData.pickupLocation" placeholder="e.g., Kotoka International Airport, Accra"
+                           class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-lonash-blue outline-none transition">
+                </div>
+
+                <!-- Accommodation -->
+                <div class="mb-6">
+                    <label class="block text-sm font-bold text-gray-700 mb-4">Accommodation Preference</label>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <label class="cursor-pointer">
+                            <input type="radio" x-model="formData.accommodationType" value="hotel" class="hidden">
+                            <div :class="formData.accommodationType === 'hotel' ? 'ring-2 ring-lonash-blue bg-blue-50' : 'bg-gray-50'" 
+                                 class="p-4 rounded-xl border-2 border-gray-200 text-center transition">
+                                <div class="text-2xl mb-2">🏨</div>
+                                <p class="text-sm font-medium">Hotel</p>
+                            </div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" x-model="formData.accommodationType" value="resort" class="hidden">
+                            <div :class="formData.accommodationType === 'resort' ? 'ring-2 ring-lonash-blue bg-blue-50' : 'bg-gray-50'" 
+                                 class="p-4 rounded-xl border-2 border-gray-200 text-center transition">
+                                <div class="text-2xl mb-2">🌴</div>
+                                <p class="text-sm font-medium">Resort</p>
+                            </div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" x-model="formData.accommodationType" value="guesthouse" class="hidden">
+                            <div :class="formData.accommodationType === 'guesthouse' ? 'ring-2 ring-lonash-blue bg-blue-50' : 'bg-gray-50'" 
+                                 class="p-4 rounded-xl border-2 border-gray-200 text-center transition">
+                                <div class="text-2xl mb-2">🏠</div>
+                                <p class="text-sm font-medium">Guesthouse</p>
+                            </div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" x-model="formData.accommodationType" value="lodge" class="hidden">
+                            <div :class="formData.accommodationType === 'lodge' ? 'ring-2 ring-lonash-blue bg-blue-50' : 'bg-gray-50'" 
+                                 class="p-4 rounded-xl border-2 border-gray-200 text-center transition">
+                                <div class="text-2xl mb-2">🏕️</div>
+                                <p class="text-sm font-medium">Lodge</p>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Room Preference -->
+                <div class="mb-6">
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Room Preference</label>
+                    <select x-model="formData.roomPreference" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-lonash-blue outline-none transition">
+                        <option value="standard">Standard Room</option>
+                        <option value="deluxe">Deluxe Room</option>
+                        <option value="suite">Suite</option>
+                        <option value="family">Family Room</option>
+                    </select>
+                </div>
+
+                <div class="flex justify-between">
+                    <button @click="prevStep()" class="border-2 border-gray-200 text-gray-600 px-6 py-3 rounded-xl font-bold hover:bg-gray-50 transition">
+                        Back
+                    </button>
+                    <button @click="nextStep()" class="bg-lonash-blue text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-blue-900 transition flex items-center">
+                        Next: Review
+                        <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 4: Review & Additional Info -->
+            <div x-show="step === 4 && !submitted" class="bg-white rounded-3xl shadow-xl p-8 md:p-12" x-cloak>
+                <h2 class="text-2xl font-bold text-lonash-blue mb-2">Review Your Request</h2>
+                <p class="text-gray-600 mb-8">Please review your trip details before submitting.</p>
+
+                <!-- Review Summary -->
+                <div class="bg-gray-50 rounded-2xl p-6 mb-8">
+                    <h3 class="font-bold text-lg mb-4">Trip Summary</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <p class="text-gray-500">Contact:</p>
+                            <p class="font-medium" x-text="formData.name"></p>
+                            <p x-text="formData.email"></p>
+                            <p x-text="formData.phone"></p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500">Group Size:</p>
+                            <p class="font-medium"><span x-text="formData.groupSize"></span> traveler(s)</p>
+                        </div>
+                        <div class="md:col-span-2">
+                            <p class="text-gray-500">Destinations:</p>
+                            <p class="font-medium">
+                                <template x-for="(dest, index) in selectedDestinationsList" :key="dest.id">
+                                    <span>
+                                        <span x-text="dest.name"></span>
+                                        <span x-show="index < selectedDestinationsList.length - 1">, </span>
+                                    </span>
+                                </template>
+                            </p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500">Duration:</p>
+                            <p class="font-medium" x-text="durationLabel"></p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500">Budget:</p>
+                            <p class="font-medium" x-text="budgetLabel"></p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500">Arrival:</p>
+                            <p class="font-medium" x-text="formData.arrivalDate || 'Not specified'"></p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500">Accommodation:</p>
+                            <p class="font-medium capitalize" x-text="formData.accommodationType"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Additional Requirements -->
+                <div class="space-y-6 mb-8">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">Dietary Requirements</label>
+                        <textarea x-model="formData.dietaryRequirements" rows="2" 
+                                  placeholder="Any dietary restrictions or preferences (vegetarian, halal, allergies, etc.)"
+                                  class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-lonash-blue outline-none transition"></textarea>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">Accessibility Needs</label>
+                        <textarea x-model="formData.accessibilityNeeds" rows="2" 
+                                  placeholder="Any mobility or accessibility requirements"
+                                  class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-lonash-blue outline-none transition"></textarea>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">Additional Requests</label>
+                        <textarea x-model="formData.additionalRequests" rows="3" 
+                                  placeholder="Any other special requests or preferences..."
+                                  class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-lonash-blue outline-none transition"></textarea>
+                    </div>
+                </div>
+
+                <div class="flex justify-between">
+                    <button @click="prevStep()" class="border-2 border-gray-200 text-gray-600 px-6 py-3 rounded-xl font-bold hover:bg-gray-50 transition">
+                        Back
+                    </button>
+                    <button @click="submitRequest()" :disabled="loading"
+                            class="bg-lonash-orange text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-orange-600 transition flex items-center disabled:opacity-50">
+                        <span x-show="!loading">Submit Request</span>
+                        <span x-show="loading" x-cloak>Submitting...</span>
+                        <svg x-show="!loading" class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Success State -->
+            <div x-show="submitted" class="bg-white rounded-3xl shadow-xl p-8 md:p-12 text-center" x-cloak>
+                <div class="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                </div>
+                <h2 class="text-3xl font-bold text-lonash-blue mb-4">Request Submitted!</h2>
+                <p class="text-gray-600 mb-4 max-w-md mx-auto">Thank you, <span x-text="formData.name" class="font-bold"></span>! Your custom trip request has been received.</p>
+                <div class="inline-block bg-lonash-blue/10 text-lonash-blue px-4 py-2 rounded-lg font-mono text-sm mb-8">
+                    Reference: <span x-text="reference"></span>
+                </div>
+
+                <div class="bg-gray-50 p-6 rounded-2xl mb-8 text-left max-w-md mx-auto">
+                    <h4 class="font-bold text-gray-900 border-b pb-2 mb-4">What happens next?</h4>
+                    <div class="space-y-3">
+                        <div class="flex items-start space-x-3">
+                            <span class="bg-lonash-blue text-white w-6 h-6 rounded-full flex items-center justify-center text-xs flex-shrink-0 mt-0.5">1</span>
+                            <p class="text-sm">Our travel experts will review your request within 24 hours.</p>
+                        </div>
+                        <div class="flex items-start space-x-3">
+                            <span class="bg-lonash-blue text-white w-6 h-6 rounded-full flex items-center justify-center text-xs flex-shrink-0 mt-0.5">2</span>
+                            <p class="text-sm">We'll create a personalized itinerary based on your preferences.</p>
+                        </div>
+                        <div class="flex items-start space-x-3">
+                            <span class="bg-lonash-blue text-white w-6 h-6 rounded-full flex items-center justify-center text-xs flex-shrink-0 mt-0.5">3</span>
+                            <p class="text-sm">Receive a detailed proposal with pricing via email and WhatsApp.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-col md:flex-row gap-4 justify-center">
+                    <a href="index.html" class="bg-gray-100 text-gray-700 px-8 py-3 rounded-full font-bold hover:bg-gray-200 transition">Return Home</a>
+                    <a href="tours.html" class="bg-lonash-blue text-white px-8 py-3 rounded-full font-bold hover:bg-blue-900 transition">Browse Tours</a>
+                    <a href="https://wa.me/233505402562" target="_blank" 
+                       class="bg-green-500 text-white px-8 py-3 rounded-full font-bold hover:bg-green-600 transition flex items-center justify-center">
+                        <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"></path>
+                        </svg>
+                        Chat on WhatsApp
+                    </a>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-white pt-16 pb-8">
+        <div class="container mx-auto px-4 text-center text-gray-500">
+            <p>&copy; 2026 Caleb Amartey Amarh. All rights reserved. | <a href="admin/login.html" class="hover:text-lonash-orange transition">Admin Portal</a></p>
+        </div>
+    </footer>
+
+    <script src="assets/js/main.js"></script>
+</body>
+</html>

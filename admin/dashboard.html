@@ -30,10 +30,21 @@
                 bookings: [],
                 tours: [],
                 showTourModal: false,
-                newTour: { title: '', category: 'Adventure', price: '', image: '', description: '' },
+                newTour: { title: '', category: 'Adventure', price: '', duration: '', image: '', description: '', featured: false },
+                customTrips: [],
+                selectedBooking: null,
+                showBookingModal: false,
                 user: null,
 
                 init() {
+                    // Check if Firebase is in mock mode (not configured)
+                    if (auth._mock || db._mock) {
+                        console.warn('Firebase not configured - using demo mode');
+                        this.user = { email: 'demo@lonashtours.com', uid: 'demo-user' };
+                        this.loadSampleData();
+                        return;
+                    }
+                    
                     onAuthStateChanged(auth, (user) => {
                         if (!user) {
                             window.location.href = 'login.html';
@@ -45,22 +56,99 @@
                 },
 
                 setupRealtimeListeners() {
-                    // Listen for Bookings
-                    const bookingsQuery = query(collection(db, 'bookings'), orderBy('createdAt', 'desc'));
-                    onSnapshot(bookingsQuery, (snapshot) => {
-                        this.bookings = snapshot.docs.map(doc => ({
-                            id: doc.id,
-                            ...doc.data()
-                        }));
-                    });
+                    try {
+                        // Listen for Bookings
+                        const bookingsQuery = query(collection(db, 'bookings'), orderBy('createdAt', 'desc'));
+                        onSnapshot(bookingsQuery, (snapshot) => {
+                            this.bookings = snapshot.docs.map(doc => ({
+                                id: doc.id,
+                                ...doc.data()
+                            }));
+                        }, (error) => {
+                            console.error('Error loading bookings:', error);
+                        });
 
-                    // Listen for Tours
-                    const toursQuery = query(collection(db, 'tours'), orderBy('createdAt', 'desc'));
-                    onSnapshot(toursQuery, (snapshot) => {
-                        this.tours = snapshot.docs.map(doc => ({
-                            id: doc.id,
-                            ...doc.data()
-                        }));
+                        // Listen for Tours
+                        const toursQuery = query(collection(db, 'tours'), orderBy('createdAt', 'desc'));
+                        onSnapshot(toursQuery, (snapshot) => {
+                            this.tours = snapshot.docs.map(doc => ({
+                                id: doc.id,
+                                ...doc.data()
+                            }));
+                        }, (error) => {
+                            console.error('Error loading tours:', error);
+                        });
+
+                        // Listen for Custom Trips
+                        const customTripsQuery = query(collection(db, 'customTrips'), orderBy('createdAt', 'desc'));
+                        onSnapshot(customTripsQuery, (snapshot) => {
+                            this.customTrips = snapshot.docs.map(doc => ({
+                                id: doc.id,
+                                ...doc.data()
+                            }));
+                        }, (error) => {
+                            console.error('Error loading custom trips:', error);
+                        });
+                    } catch (error) {
+                        console.error('Error setting up listeners:', error);
+                        this.loadSampleData();
+                    }
+                },
+
+                loadSampleData() {
+                    // Sample tours
+                    this.tours = [
+                        { id: '1', title: 'Cape Coast Castle Tour', category: 'Educational', price: 450, duration: '1 Day', featured: true, createdAt: new Date().toISOString() },
+                        { id: '2', title: 'Kakum Canopy Walk', category: 'Adventure', price: 320, duration: '1 Day', featured: true, createdAt: new Date().toISOString() },
+                        { id: '3', title: 'Mole Safari', category: 'Wildlife', price: 1200, duration: '3 Days', featured: false, createdAt: new Date().toISOString() }
+                    ];
+                    
+                    // Sample bookings
+                    this.bookings = [
+                        { id: 'booking-1', bookingRef: 'LON-12345', name: 'John Doe', email: 'john@example.com', phone: '+233501234567', tour: 'Cape Coast Castle Tour', date: '2026-05-15', amount: 450, status: 'Confirmed', paymentStatus: 'Paid', createdAt: new Date().toISOString() },
+                        { id: 'booking-2', bookingRef: 'LON-12346', name: 'Jane Smith', email: 'jane@example.com', phone: '+233502345678', tour: 'Kakum Canopy Walk', date: '2026-05-20', amount: 320, status: 'Pending', paymentStatus: 'Unpaid', createdAt: new Date().toISOString() }
+                    ];
+                    
+                    // Sample custom trips
+                    this.customTrips = [
+                        { id: 'trip-1', reference: 'CUST-001', name: 'Mike Johnson', phone: '+233503456789', destinations: ['Cape Coast', 'Kakum'], duration: '2 Days', groupSize: 4, status: 'Pending Review', createdAt: new Date().toISOString() }
+                    ];
+                },
+
+                get paidBookings() {
+                    return this.bookings.filter(b => b.paymentStatus === 'Paid' || b.status === 'Paid');
+                },
+
+                get pendingBookings() {
+                    return this.bookings.filter(b => b.status === 'Pending' || b.status === 'Pending Payment');
+                },
+
+                get totalRevenue() {
+                    return this.paidBookings.reduce((sum, b) => sum + (b.amount || 0), 0);
+                },
+
+                openBookingDetails(booking) {
+                    this.selectedBooking = booking;
+                    this.showBookingModal = true;
+                },
+
+                closeBookingModal() {
+                    this.showBookingModal = false;
+                    this.selectedBooking = null;
+                },
+
+                formatCurrency(amount) {
+                    return new Intl.NumberFormat('en-GH', { style: 'currency', currency: 'GHS' }).format(amount || 0);
+                },
+
+                formatDate(dateString) {
+                    if (!dateString) return 'N/A';
+                    return new Date(dateString).toLocaleDateString('en-GH', { 
+                        year: 'numeric', 
+                        month: 'short', 
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
                     });
                 },
 
@@ -121,9 +209,23 @@
         </div>
 
         <nav class="space-y-2">
+            <button @click="currentTab = 'dashboard'" :class="currentTab === 'dashboard' ? 'bg-white/10' : ''" class="w-full flex items-center space-x-3 px-4 py-3 rounded-xl hover:bg-white/5 transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path>
+                </svg>
+                <span>Dashboard</span>
+            </button>
             <button @click="currentTab = 'bookings'" :class="currentTab === 'bookings' ? 'bg-white/10' : ''" class="w-full flex items-center space-x-3 px-4 py-3 rounded-xl hover:bg-white/5 transition">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                 <span>Bookings</span>
+                <span x-show="pendingBookings.length > 0" x-text="pendingBookings.length" class="ml-auto bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full"></span>
+            </button>
+            <button @click="currentTab = 'custom-trips'" :class="currentTab === 'custom-trips' ? 'bg-white/10' : ''" class="w-full flex items-center space-x-3 px-4 py-3 rounded-xl hover:bg-white/5 transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                </svg>
+                <span>Custom Trips</span>
+                <span x-show="customTrips.length > 0" x-text="customTrips.length" class="ml-auto bg-blue-500 text-white text-xs font-bold px-2 py-0.5 rounded-full"></span>
             </button>
             <button @click="currentTab = 'tours'" :class="currentTab === 'tours' ? 'bg-white/10' : ''" class="w-full flex items-center space-x-3 px-4 py-3 rounded-xl hover:bg-white/5 transition">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-10V4m0 10V4m0 10V4m0 10V4"></path></svg>
@@ -146,9 +248,9 @@
     <!-- Main Content -->
     <main class="md:ml-64 p-8">
         <!-- Header -->
-        <header class="flex items-center justify-between mb-12">
+        <header class="flex items-center justify-between mb-8">
             <div>
-                <h1 class="text-3xl font-bold text-gray-900" x-text="currentTab.charAt(0).toUpperCase() + currentTab.slice(1)">Dashboard</h1>
+                <h1 class="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
                 <p class="text-gray-500">Welcome back, Benjamin Eyison</p>
             </div>
             <div class="flex items-center space-x-4">
@@ -159,49 +261,227 @@
             </div>
         </header>
 
-        <!-- Bookings Tab -->
-        <div x-show="currentTab === 'bookings'" x-cloak>
+        <!-- Dashboard Overview Tab -->
+        <div x-show="currentTab === 'dashboard'" x-cloak>
+            <!-- Stats Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-500 text-sm">Total Bookings</p>
+                            <p class="text-3xl font-bold text-gray-900" x-text="bookings.length"></p>
+                        </div>
+                        <div class="bg-blue-100 p-3 rounded-xl">
+                            <svg class="w-6 h-6 text-lonash-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-2xl shadow-sm border">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-500 text-sm">Paid Bookings</p>
+                            <p class="text-3xl font-bold text-green-600" x-text="paidBookings.length"></p>
+                        </div>
+                        <div class="bg-green-100 p-3 rounded-xl">
+                            <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-2xl shadow-sm border">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-500 text-sm">Pending</p>
+                            <p class="text-3xl font-bold text-yellow-600" x-text="pendingBookings.length"></p>
+                        </div>
+                        <div class="bg-yellow-100 p-3 rounded-xl">
+                            <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-2xl shadow-sm border">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-500 text-sm">Total Revenue</p>
+                            <p class="text-3xl font-bold text-lonash-orange" x-text="formatCurrency(totalRevenue)"></p>
+                        </div>
+                        <div class="bg-orange-100 p-3 rounded-xl">
+                            <svg class="w-6 h-6 text-lonash-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Bookings -->
             <div class="bg-white rounded-3xl shadow-sm border overflow-hidden">
+                <div class="p-6 border-b flex items-center justify-between">
+                    <h3 class="text-lg font-bold">Recent Bookings</h3>
+                    <button @click="currentTab = 'bookings'" class="text-lonash-blue font-medium hover:underline">View All</button>
+                </div>
                 <table class="w-full text-left">
-                    <thead class="bg-gray-50 border-b">
+                    <thead class="bg-gray-50">
                         <tr>
-                            <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase">Booking ID</th>
-                            <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase">Customer</th>
-                            <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase">Tour</th>
-                            <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase">Date</th>
-                            <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase">Status</th>
-                            <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase">Actions</th>
+                            <th class="px-6 py-3 text-xs font-bold text-gray-500 uppercase">Customer</th>
+                            <th class="px-6 py-3 text-xs font-bold text-gray-500 uppercase">Tour</th>
+                            <th class="px-6 py-3 text-xs font-bold text-gray-500 uppercase">Payment</th>
+                            <th class="px-6 py-3 text-xs font-bold text-gray-500 uppercase">Status</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y">
-                        <template x-for="booking in bookings" :key="booking.id">
-                            <tr class="hover:bg-gray-50 transition">
-                                <td class="px-6 py-4 font-bold text-lonash-blue" x-text="booking.id"></td>
+                        <template x-for="booking in bookings.slice(0, 5)" :key="booking.id">
+                            <tr class="hover:bg-gray-50 transition cursor-pointer" @click="openBookingDetails(booking)">
                                 <td class="px-6 py-4">
                                     <div class="font-bold" x-text="booking.name"></div>
                                     <div class="text-xs text-gray-500" x-text="booking.email"></div>
                                 </td>
                                 <td class="px-6 py-4 text-sm" x-text="booking.tour"></td>
-                                <td class="px-6 py-4 text-sm" x-text="booking.date"></td>
                                 <td class="px-6 py-4">
                                     <span :class="{
-                                        'bg-yellow-100 text-yellow-700': booking.status === 'Pending',
-                                        'bg-green-100 text-green-700': booking.status === 'Approved',
-                                        'bg-red-100 text-red-700': booking.status === 'Cancelled'
-                                    }" class="px-3 py-1 rounded-full text-xs font-bold" x-text="booking.status"></span>
+                                        'bg-green-100 text-green-700': booking.paymentStatus === 'Paid',
+                                        'bg-yellow-100 text-yellow-700': booking.paymentStatus === 'Pending' || !booking.paymentStatus,
+                                        'bg-gray-100 text-gray-700': booking.paymentStatus === 'Unpaid'
+                                    }" class="px-2 py-1 rounded-full text-xs font-bold" x-text="booking.paymentStatus || 'Unpaid'"></span>
                                 </td>
                                 <td class="px-6 py-4">
-                                    <div class="flex items-center space-x-2">
-                                        <button @click="updateBookingStatus(booking.id, 'Approved')" class="text-green-600 hover:bg-green-50 p-1 rounded transition"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></button>
-                                        <button @click="updateBookingStatus(booking.id, 'Cancelled')" class="text-red-600 hover:bg-red-50 p-1 rounded transition"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
-                                        <a :href="'tel:' + booking.phone" class="text-blue-600 hover:bg-blue-50 p-1 rounded transition"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg></a>
-                                    </div>
+                                    <span :class="{
+                                        'bg-yellow-100 text-yellow-700': booking.status === 'Pending' || booking.status === 'Pending Payment',
+                                        'bg-green-100 text-green-700': booking.status === 'Approved' || booking.status === 'Paid' || booking.status === 'Confirmed',
+                                        'bg-blue-100 text-blue-700': booking.status === 'Completed',
+                                        'bg-red-100 text-red-700': booking.status === 'Cancelled'
+                                    }" class="px-2 py-1 rounded-full text-xs font-bold" x-text="booking.status || 'Pending'"></span>
                                 </td>
                             </tr>
                         </template>
                     </tbody>
                 </table>
+                <div x-show="bookings.length === 0" class="p-12 text-center text-gray-500">No bookings yet.</div>
+            </div>
+        </div>
+
+        <!-- Bookings Tab -->
+        <div x-show="currentTab === 'bookings'" x-cloak>
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold">All Bookings</h3>
+                <div class="flex gap-2">
+                    <span class="text-sm text-gray-500 self-center">Total: <span x-text="bookings.length" class="font-bold"></span></span>
+                </div>
+            </div>
+            <div class="bg-white rounded-3xl shadow-sm border overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead class="bg-gray-50 border-b">
+                            <tr>
+                                <th class="px-4 py-3 text-xs font-bold text-gray-500 uppercase">Booking ID</th>
+                                <th class="px-4 py-3 text-xs font-bold text-gray-500 uppercase">Customer</th>
+                                <th class="px-4 py-3 text-xs font-bold text-gray-500 uppercase">Tour</th>
+                                <th class="px-4 py-3 text-xs font-bold text-gray-500 uppercase">Date</th>
+                                <th class="px-4 py-3 text-xs font-bold text-gray-500 uppercase">Amount</th>
+                                <th class="px-4 py-3 text-xs font-bold text-gray-500 uppercase">Payment</th>
+                                <th class="px-4 py-3 text-xs font-bold text-gray-500 uppercase">Status</th>
+                                <th class="px-4 py-3 text-xs font-bold text-gray-500 uppercase">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y">
+                            <template x-for="booking in bookings" :key="booking.id">
+                                <tr class="hover:bg-gray-50 transition">
+                                    <td class="px-4 py-3 font-mono text-sm text-lonash-blue" x-text="booking.bookingRef || booking.id.substring(0, 8)"></td>
+                                    <td class="px-4 py-3">
+                                        <div class="font-bold text-sm" x-text="booking.name"></div>
+                                        <div class="text-xs text-gray-500" x-text="booking.phone"></div>
+                                    </td>
+                                    <td class="px-4 py-3 text-sm" x-text="booking.tour"></td>
+                                    <td class="px-4 py-3 text-sm" x-text="booking.date || 'N/A'"></td>
+                                    <td class="px-4 py-3 text-sm font-bold" x-text="formatCurrency(booking.amount)"></td>
+                                    <td class="px-4 py-3">
+                                        <span :class="{
+                                            'bg-green-100 text-green-700': booking.paymentStatus === 'Paid',
+                                            'bg-yellow-100 text-yellow-700': booking.paymentStatus === 'Pending' || !booking.paymentStatus,
+                                            'bg-red-100 text-red-700': booking.paymentStatus === 'Failed'
+                                        }" class="px-2 py-1 rounded-full text-xs font-bold" x-text="booking.paymentStatus || 'Unpaid'"></span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <span :class="{
+                                            'bg-yellow-100 text-yellow-700': booking.status === 'Pending' || booking.status === 'Pending Payment',
+                                            'bg-green-100 text-green-700': booking.status === 'Approved' || booking.status === 'Paid' || booking.status === 'Confirmed',
+                                            'bg-red-100 text-red-700': booking.status === 'Cancelled'
+                                        }" class="px-2 py-1 rounded-full text-xs font-bold" x-text="booking.status || 'Pending'"></span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center space-x-1">
+                                            <button @click="openBookingDetails(booking)" class="text-gray-600 hover:bg-gray-100 p-1.5 rounded transition" title="View Details">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                                </svg>
+                                            </button>
+                                            <button @click="updateBookingStatus(booking.id, 'Confirmed')" class="text-green-600 hover:bg-green-50 p-1.5 rounded transition" title="Confirm">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                            </button>
+                                            <button @click="updateBookingStatus(booking.id, 'Cancelled')" class="text-red-600 hover:bg-red-50 p-1.5 rounded transition" title="Cancel">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                            </button>
+                                            <a :href="'https://wa.me/' + booking.phone.replace(/\D/g, '')" target="_blank" class="text-green-500 hover:bg-green-50 p-1.5 rounded transition" title="WhatsApp">
+                                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884"></path>
+                                                </svg>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
                 <div x-show="bookings.length === 0" class="p-12 text-center text-gray-500">No booking requests found.</div>
+            </div>
+        </div>
+
+        <!-- Custom Trips Tab -->
+        <div x-show="currentTab === 'custom-trips'" x-cloak>
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold">Custom Trip Requests</h3>
+                <span class="text-sm text-gray-500">Total: <span x-text="customTrips.length" class="font-bold"></span></span>
+            </div>
+            <div class="bg-white rounded-3xl shadow-sm border overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead class="bg-gray-50 border-b">
+                            <tr>
+                                <th class="px-4 py-3 text-xs font-bold text-gray-500 uppercase">Reference</th>
+                                <th class="px-4 py-3 text-xs font-bold text-gray-500 uppercase">Customer</th>
+                                <th class="px-4 py-3 text-xs font-bold text-gray-500 uppercase">Destinations</th>
+                                <th class="px-4 py-3 text-xs font-bold text-gray-500 uppercase">Duration</th>
+                                <th class="px-4 py-3 text-xs font-bold text-gray-500 uppercase">Group Size</th>
+                                <th class="px-4 py-3 text-xs font-bold text-gray-500 uppercase">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y">
+                            <template x-for="trip in customTrips" :key="trip.id">
+                                <tr class="hover:bg-gray-50 transition">
+                                    <td class="px-4 py-3 font-mono text-sm text-lonash-blue" x-text="trip.reference"></td>
+                                    <td class="px-4 py-3">
+                                        <div class="font-bold text-sm" x-text="trip.name"></div>
+                                        <div class="text-xs text-gray-500" x-text="trip.phone"></div>
+                                    </td>
+                                    <td class="px-4 py-3 text-sm" x-text="trip.destinations?.length + ' destinations'"></td>
+                                    <td class="px-4 py-3 text-sm" x-text="trip.duration"></td>
+                                    <td class="px-4 py-3 text-sm" x-text="trip.groupSize + ' people'"></td>
+                                    <td class="px-4 py-3">
+                                        <span class="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs font-bold" x-text="trip.status || 'Pending Review'"></span>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+                <div x-show="customTrips.length === 0" class="p-12 text-center text-gray-500">No custom trip requests yet.</div>
             </div>
         </div>
 
@@ -217,18 +497,33 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <template x-for="tour in tours" :key="tour.id">
-                    <div class="bg-white p-6 rounded-3xl shadow-sm border hover:shadow-md transition group">
-                        <div class="flex justify-between items-start mb-4">
-                            <span class="bg-blue-50 text-lonash-blue px-3 py-1 rounded-full text-xs font-bold" x-text="tour.category"></span>
-                            <button @click="deleteTour(tour.id)" class="text-gray-400 hover:text-red-500 transition opacity-0 group-hover:opacity-100">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                            </button>
+                    <div class="bg-white rounded-3xl shadow-sm border hover:shadow-lg transition group overflow-hidden">
+                        <div class="h-40 overflow-hidden">
+                            <img :src="tour.image || 'https://images.unsplash.com/photo-1590059300300-8446908502f6?auto=format&fit=crop&q=80&w=400'" 
+                                 :alt="tour.title" 
+                                 class="w-full h-full object-cover">
                         </div>
-                        <h4 class="text-lg font-bold text-gray-900 mb-2" x-text="tour.title"></h4>
-                        <div class="text-2xl font-bold text-lonash-orange">GH₵<span x-text="tour.price"></span></div>
+                        <div class="p-5">
+                            <div class="flex justify-between items-start mb-2">
+                                <span class="bg-blue-50 text-lonash-blue px-3 py-1 rounded-full text-xs font-bold" x-text="tour.category"></span>
+                                <div class="flex items-center gap-2">
+                                    <span x-show="tour.featured" class="bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded text-xs font-bold">★ Featured</span>
+                                    <button @click="deleteTour(tour.id)" class="text-gray-400 hover:text-red-500 transition">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <h4 class="text-lg font-bold text-gray-900 mb-1 line-clamp-1" x-text="tour.title"></h4>
+                            <p class="text-sm text-gray-500 mb-3" x-text="tour.duration || 'Duration not set'"></p>
+                            <div class="flex items-center justify-between">
+                                <div class="text-xl font-bold text-lonash-orange" x-text="formatCurrency(tour.price)"></div>
+                                <span class="text-xs text-gray-400" x-text="tour.createdAt ? formatDate(tour.createdAt) : ''"></span>
+                            </div>
+                        </div>
                     </div>
                 </template>
             </div>
+            <div x-show="tours.length === 0" class="p-12 text-center text-gray-500 bg-white rounded-3xl">No tours added yet.</div>
         </div>
 
         <!-- Settings Tab -->
@@ -241,8 +536,8 @@
                         <input type="text" value="LonAsh Tours" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-lonash-blue outline-none">
                     </div>
                     <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-2">WhatsApp Number</label>
-                        <input type="text" value="+233 0505402562" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-lonash-blue outline-none">
+                        <label class="block text-sm font-bold text-gray-700 mb-2">Support WhatsApp</label>
+                        <input type="text" value="+233 50 540 2562" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-lonash-blue outline-none">
                     </div>
                     <div>
                         <label class="block text-sm font-bold text-gray-700 mb-2">Support Email</label>
@@ -256,11 +551,11 @@
 
     <!-- Tour Modal -->
     <div x-show="showTourModal" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-        <div @click.away="showTourModal = false" class="bg-white rounded-3xl p-8 w-full max-w-lg shadow-2xl">
+        <div @click.away="showTourModal = false" class="bg-white rounded-3xl p-8 w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto">
             <h3 class="text-2xl font-bold text-lonash-blue mb-6">Create New Package</h3>
             <div class="space-y-4">
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-2">Tour Title</label>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Tour Title *</label>
                     <input type="text" x-model="newTour.title" placeholder="e.g. Accra City Tour" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-lonash-blue outline-none">
                 </div>
                 <div class="grid grid-cols-2 gap-4">
@@ -271,12 +566,17 @@
                             <option>Educational</option>
                             <option>Wildlife</option>
                             <option>Nature</option>
+                            <option>Cultural</option>
                         </select>
                     </div>
                     <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-2">Price (GH₵)</label>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">Price (GH₵) *</label>
                         <input type="number" x-model="newTour.price" placeholder="100" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-lonash-blue outline-none">
                     </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Duration</label>
+                    <input type="text" x-model="newTour.duration" placeholder="e.g. 3 Days, 2 Nights" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-lonash-blue outline-none">
                 </div>
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-2">Image URL</label>
@@ -287,9 +587,104 @@
                     <label class="block text-sm font-bold text-gray-700 mb-2">Tour Description</label>
                     <textarea x-model="newTour.description" rows="3" placeholder="Briefly describe this tour package..." class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-lonash-blue outline-none"></textarea>
                 </div>
+                <div class="flex items-center">
+                    <input type="checkbox" x-model="newTour.featured" id="featured" class="w-5 h-5 text-lonash-blue rounded border-gray-300 focus:ring-lonash-blue">
+                    <label for="featured" class="ml-2 text-sm font-bold text-gray-700">Mark as Featured Tour</label>
+                </div>
                 <div class="flex gap-4 mt-6">
                     <button @click="showTourModal = false" class="flex-1 px-6 py-3 rounded-xl border border-gray-200 font-bold hover:bg-gray-50 transition">Cancel</button>
                     <button @click="addTour()" class="flex-1 bg-lonash-blue text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-900 transition">Create Tour</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Booking Details Modal -->
+    <div x-show="showBookingModal" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div @click.away="closeBookingModal()" class="bg-white rounded-3xl p-8 w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-2xl font-bold text-lonash-blue">Booking Details</h3>
+                <button @click="closeBookingModal()" class="p-2 hover:bg-gray-100 rounded-full transition">
+                    <svg class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <div x-show="selectedBooking" class="space-y-6">
+                <!-- Booking Reference -->
+                <div class="bg-gray-50 p-4 rounded-xl">
+                    <p class="text-sm text-gray-500">Booking Reference</p>
+                    <p class="text-lg font-mono font-bold text-lonash-blue" x-text="selectedBooking?.bookingRef || selectedBooking?.id"></p>
+                </div>
+                
+                <!-- Customer Info -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-sm text-gray-500">Customer Name</p>
+                        <p class="font-bold" x-text="selectedBooking?.name"></p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">Email</p>
+                        <p class="font-bold" x-text="selectedBooking?.email"></p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">Phone</p>
+                        <p class="font-bold" x-text="selectedBooking?.phone"></p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">Travelers</p>
+                        <p class="font-bold" x-text="selectedBooking?.travelers || 1"></p>
+                    </div>
+                </div>
+                
+                <!-- Tour Info -->
+                <div class="border-t pt-4">
+                    <p class="text-sm text-gray-500">Selected Tour</p>
+                    <p class="font-bold text-lg" x-text="selectedBooking?.tour"></p>
+                    <p class="text-sm text-gray-500 mt-2">Travel Date</p>
+                    <p class="font-bold" x-text="selectedBooking?.date || 'Not specified'"></p>
+                </div>
+                
+                <!-- Payment Info -->
+                <div class="border-t pt-4">
+                    <div class="flex justify-between items-center mb-2">
+                        <p class="text-sm text-gray-500">Amount</p>
+                        <p class="font-bold text-xl text-lonash-orange" x-text="formatCurrency(selectedBooking?.amount)"></p>
+                    </div>
+                    <div class="flex justify-between items-center mb-2">
+                        <p class="text-sm text-gray-500">Payment Method</p>
+                        <p class="font-bold" x-text="selectedBooking?.paymentMethod === 'momo' ? 'Mobile Money' : 'Pay on Arrival'"></p>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <p class="text-sm text-gray-500">Payment Status</p>
+                        <span :class="{
+                            'bg-green-100 text-green-700': selectedBooking?.paymentStatus === 'Paid',
+                            'bg-yellow-100 text-yellow-700': selectedBooking?.paymentStatus !== 'Paid'
+                        }" class="px-3 py-1 rounded-full text-sm font-bold" x-text="selectedBooking?.paymentStatus || 'Unpaid'"></span>
+                    </div>
+                    <div x-show="selectedBooking?.paymentReference" class="mt-2">
+                        <p class="text-sm text-gray-500">Payment Reference</p>
+                        <p class="font-mono text-sm" x-text="selectedBooking?.paymentReference"></p>
+                    </div>
+                </div>
+                
+                <!-- Special Requests -->
+                <div x-show="selectedBooking?.specialRequests" class="border-t pt-4">
+                    <p class="text-sm text-gray-500">Special Requests</p>
+                    <p class="text-gray-700" x-text="selectedBooking?.specialRequests"></p>
+                </div>
+                
+                <!-- Actions -->
+                <div class="flex gap-4 pt-4 border-t">
+                    <button @click="closeBookingModal()" class="flex-1 px-6 py-3 rounded-xl border border-gray-200 font-bold hover:bg-gray-50 transition">Close</button>
+                    <a :href="'https://wa.me/' + selectedBooking?.phone?.replace(/\D/g, '')" target="_blank" 
+                       class="flex-1 bg-green-500 text-white px-6 py-3 rounded-xl font-bold hover:bg-green-600 transition text-center flex items-center justify-center">
+                        <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884"></path>
+                        </svg>
+                        Contact via WhatsApp
+                    </a>
                 </div>
             </div>
         </div>

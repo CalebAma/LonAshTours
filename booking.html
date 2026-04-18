@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Book Your Trip | LonAsh Tours</title>
+    <meta name="description" content="Book your next adventure in Ghana with LonAsh Tours. Simple and secure booking for tours, hotels, and more.">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -21,8 +22,13 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
     <!-- Custom CSS -->
     <link rel="stylesheet" href="assets/css/styles.css">
+    <!-- Paystack SDK -->
+    <script src="https://js.paystack.co/v1/inline.js"></script>
+    <!-- Configuration -->
+    <script src="assets/js/config.js"></script>
+    
     <script type="module">
-        import { db, collection, addDoc, getDocs, query, orderBy, onSnapshot } from './assets/js/firebase-config.js';
+        import { db, collection, addDoc, query, orderBy, onSnapshot, doc, updateDoc } from './assets/js/firebase-config.js';
 
         document.addEventListener('alpine:init', () => {
             Alpine.data('bookingForm', () => ({
@@ -37,41 +43,336 @@
                     date: '',
                     travelers: 1,
                     message: '',
-                    paymentMethod: 'arrival'
+                    specialRequests: '',
+                    paymentMethod: 'arrival',
+                    amount: 0,
+                    mobileMoneyProvider: 'mtn' // mtn, telecel, airteltigo
                 },
                 tours: [],
+                bookingRef: '',
+                bookingId: '',
+                paymentError: '',
+                apiBaseUrl: window.location.hostname === 'localhost' ? 'http://localhost:3000' : 'https://api.lonashtours.com',
                 
                 async init() {
-                    // Fetch tours from Firestore
-                    const toursQuery = query(collection(db, 'tours'), orderBy('createdAt', 'desc'));
-                    onSnapshot(toursQuery, (snapshot) => {
-                        this.tours = snapshot.docs.map(doc => ({
-                            id: doc.id,
-                            ...doc.data()
-                        }));
-                    });
+                    // Pre-select tour if ID is in URL
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const tourId = urlParams.get('tour');
+                    if (tourId) {
+                        this.bookingData.tourId = tourId;
+                    }
+
+                    // Check if Firebase is in mock mode
+                    if (db._mock) {
+                        console.log('Using sample tours data for booking');
+                        this.tours = this.getSampleTours();
+                        return;
+                    }
+
+                    try {
+                        // Fetch tours from Firestore
+                        const toursQuery = query(collection(db, 'tours'), orderBy('createdAt', 'desc'));
+                        onSnapshot(toursQuery, (snapshot) => {
+                            this.tours = snapshot.docs.map(doc => ({
+                                id: doc.id,
+                                ...doc.data()
+                            }));
+                        }, (error) => {
+                            console.error('Error loading tours:', error);
+                            this.tours = this.getSampleTours();
+                        });
+                    } catch (error) {
+                        console.error('Error initializing tours:', error);
+                        this.tours = this.getSampleTours();
+                    }
+
+                    // Check for payment return (from Paystack redirect)
+                    const paymentRef = urlParams.get('reference');
+                    const trxref = urlParams.get('trxref');
+                    if (paymentRef || trxref) {
+                        this.verifyPaymentOnReturn(paymentRef || trxref);
+                    }
+                },
+
+                getSampleTours() {
+                    return [
+                        { id: 'tour-1', title: 'Cape Coast Castle & Elmina Tour', category: 'Educational', price: 450, duration: '1 Day', featured: true },
+                        { id: 'tour-2', title: 'Kakum National Park Canopy Walk', category: 'Adventure', price: 320, duration: '1 Day', featured: true },
+                        { id: 'tour-3', title: 'Accra City Experience', category: 'Cultural', price: 380, duration: '1 Day', featured: false },
+                        { id: 'tour-4', title: 'Mole National Park Safari', category: 'Wildlife', price: 1200, duration: '3 Days', featured: true },
+                        { id: 'tour-5', title: 'Volta Region Waterfalls', category: 'Nature', price: 550, duration: '2 Days', featured: false },
+                        { id: 'tour-6', title: 'Ashanti Cultural Heritage', category: 'Cultural', price: 680, duration: '2 Days', featured: false }
+                    ];
+                },
+
+                get selectedTour() {
+                    return this.tours.find(t => t.id === this.bookingData.tourId);
+                },
+
+                get totalAmount() {
+                    if (!this.selectedTour) return 0;
+                    const price = parseFloat(this.selectedTour.price) || 0;
+                    return price * this.bookingData.travelers;
+                },
+
+                get formattedAmount() {
+                    return new Intl.NumberFormat('en-GH', { 
+                        style: 'currency', 
+                        currency: 'GHS' 
+                    }).format(this.totalAmount);
+                },
+
+                validateStep1() {
+                    if (!this.bookingData.tourId) {
+                        alert('Please select a tour package');
+                        return false;
+                    }
+                    if (!this.bookingData.date) {
+                        alert('Please select a preferred date');
+                        return false;
+                    }
+                    if (!this.bookingData.name || this.bookingData.name.length < 2) {
+                        alert('Please enter your full name');
+                        return false;
+                    }
+                    if (!this.bookingData.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.bookingData.email)) {
+                        alert('Please enter a valid email address');
+                        return false;
+                    }
+                    if (!this.bookingData.phone || !this.bookingData.phone.match(/^(\+233|0)[2-9]\d{8}$/)) {
+                        alert('Please enter a valid Ghana phone number (e.g., +233501234567 or 0501234567)');
+                        return false;
+                    }
+                    return true;
+                },
+
+                goToStep2() {
+                    if (this.validateStep1()) {
+                        this.step = 2;
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
                 },
 
                 async submitBooking() {
+                    this.paymentError = '';
+                    
+                    // Check if Firebase is in mock mode (Pay on Arrival)
+                    if (db._mock && this.bookingData.paymentMethod === 'arrival') {
+                        console.log('Demo mode: Simulating booking submission');
+                        this.loading = true;
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        const tourTitle = this.selectedTour ? this.selectedTour.title : 'Custom Package';
+                        const ref = 'LON-' + Math.random().toString(36).substring(2, 7).toUpperCase();
+                        this.bookingRef = ref;
+                        this.bookingId = 'demo-' + Date.now();
+                        this.step = 3;
+                        this.loading = false;
+                        return;
+                    }
+                    
+                    if (this.bookingData.paymentMethod === 'momo') {
+                        await this.payWithPaystack();
+                        return;
+                    }
+                    
                     this.loading = true;
                     try {
-                        const selectedTour = this.tours.find(t => t.id === this.bookingData.tourId);
-                        const tourTitle = selectedTour ? selectedTour.title : 'Custom Package';
+                        const tourTitle = this.selectedTour ? this.selectedTour.title : 'Custom Package';
+                        const ref = 'LON-' + Math.random().toString(36).substring(2, 7).toUpperCase();
                         
-                        await addDoc(collection(db, 'bookings'), {
+                        const docRef = await addDoc(collection(db, 'bookings'), {
                             ...this.bookingData,
                             tour: tourTitle,
+                            tourId: this.bookingData.tourId,
                             status: 'Pending',
+                            paymentStatus: 'Unpaid',
+                            amount: this.totalAmount,
+                            bookingRef: ref,
                             createdAt: new Date().toISOString()
                         });
                         
+                        this.bookingRef = ref;
+                        this.bookingId = docRef.id;
                         this.step = 3;
                     } catch (err) {
-                        alert('Booking failed: ' + err.message);
+                        this.paymentError = 'Booking failed: ' + err.message;
                         console.error(err);
                     } finally {
                         this.loading = false;
                     }
+                },
+
+                async payWithPaystack() {
+                    this.loading = true;
+                    this.paymentError = '';
+                    
+                    try {
+                        const tourTitle = this.selectedTour ? this.selectedTour.title : 'Custom Package';
+                        const ref = 'LON-' + Math.random().toString(36).substring(2, 10).toUpperCase();
+                        
+                        // First, create the booking in pending state
+                        const docRef = await addDoc(collection(db, 'bookings'), {
+                            ...this.bookingData,
+                            tour: tourTitle,
+                            tourId: this.bookingData.tourId,
+                            status: 'Pending Payment',
+                            paymentStatus: 'Pending',
+                            amount: this.totalAmount,
+                            bookingRef: ref,
+                            createdAt: new Date().toISOString()
+                        });
+                        
+                        this.bookingId = docRef.id;
+                        
+                        // Get Paystack public key from config
+                        const publicKey = (typeof CONFIG !== 'undefined' && CONFIG.paystack?.publicKey) 
+                            ? CONFIG.paystack.publicKey 
+                            : 'pk_test_YOUR_PUBLIC_KEY';
+                        
+                        const handler = PaystackPop.setup({
+                            key: publicKey,
+                            email: this.bookingData.email,
+                            amount: this.totalAmount * 100, // Convert to pesewas
+                            currency: 'GHS',
+                            ref: ref,
+                            metadata: {
+                                custom_fields: [
+                                    {
+                                        display_name: "Booking ID",
+                                        variable_name: "booking_id",
+                                        value: docRef.id
+                                    },
+                                    {
+                                        display_name: "Customer Name",
+                                        variable_name: "customer_name",
+                                        value: this.bookingData.name
+                                    },
+                                    {
+                                        display_name: "Mobile Number",
+                                        variable_name: "mobile_number",
+                                        value: this.bookingData.phone
+                                    },
+                                    {
+                                        display_name: "Tour",
+                                        variable_name: "tour",
+                                        value: tourTitle
+                                    },
+                                    {
+                                        display_name: "Travelers",
+                                        variable_name: "travelers",
+                                        value: this.bookingData.travelers.toString()
+                                    }
+                                ]
+                            },
+                            callback: async (response) => {
+                                await this.handlePaymentSuccess(response, docRef.id, tourTitle, ref);
+                            },
+                            onClose: () => {
+                                this.loading = false;
+                                // User closed payment window - booking remains in pending state
+                                console.log('Payment window closed by user');
+                            }
+                        });
+                        
+                        handler.openIframe();
+                    } catch (err) {
+                        this.loading = false;
+                        this.paymentError = 'Failed to initialize payment: ' + err.message;
+                        console.error(err);
+                    }
+                },
+
+                async handlePaymentSuccess(response, bookingId, tourTitle, ref) {
+                    this.loading = true;
+                    try {
+                        // Verify payment with backend
+                        const verifyResponse = await fetch(`${this.apiBaseUrl}/api/verify-payment`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                reference: response.reference,
+                                bookingId: bookingId
+                            })
+                        });
+                        
+                        const verifyData = await verifyResponse.json();
+                        
+                        if (verifyData.success) {
+                            // Update booking with payment confirmation
+                            await updateDoc(doc(db, 'bookings', bookingId), {
+                                status: 'Paid',
+                                paymentStatus: 'Paid',
+                                paymentReference: response.reference,
+                                paymentVerifiedAt: new Date().toISOString(),
+                                paymentVerifiedBy: 'backend'
+                            });
+                            
+                            this.bookingRef = ref;
+                            this.step = 3;
+                        } else {
+                            // Payment verification failed
+                            this.paymentError = 'Payment verification failed. Please contact support.';
+                            console.error('Verification failed:', verifyData);
+                        }
+                    } catch (err) {
+                        // Even if backend verification fails, Paystack callback means payment succeeded
+                        // Update locally and let webhook handle backend verification
+                        try {
+                            await updateDoc(doc(db, 'bookings', bookingId), {
+                                status: 'Paid',
+                                paymentStatus: 'Paid (Pending Verification)',
+                                paymentReference: response.reference,
+                                paymentPendingVerification: true
+                            });
+                            
+                            this.bookingRef = ref;
+                            this.step = 3;
+                        } catch (updateErr) {
+                            this.paymentError = 'Failed to update booking: ' + updateErr.message;
+                        }
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+
+                async verifyPaymentOnReturn(reference) {
+                    // Handle return from Paystack redirect flow
+                    this.loading = true;
+                    try {
+                        const response = await fetch(`${this.apiBaseUrl}/api/verify-payment`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ reference })
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            // Find and update the booking
+                            // This would need the booking ID - typically stored in session/localStorage
+                            console.log('Payment verified on return:', data);
+                        }
+                    } catch (err) {
+                        console.error('Error verifying payment on return:', err);
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+
+                formatCurrency(amount) {
+                    return new Intl.NumberFormat('en-GH', { 
+                        style: 'currency', 
+                        currency: 'GHS' 
+                    }).format(amount);
+                },
+
+                getProviderLogo(provider) {
+                    const logos = {
+                        mtn: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/MTN_Group_logo.svg/120px-MTN_Group_logo.svg.png',
+                        telecel: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/Vodafone_2017_logo.svg/120px-Vodafone_2017_logo.svg.png',
+                        airteltigo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9e/Airtel_logo.svg/120px-Airtel_logo.svg.png'
+                    };
+                    return logos[provider] || '';
                 }
             }));
         });
@@ -195,7 +496,34 @@
                             </div>
                         </div>
 
-                        <button @click="step = 2" class="w-full bg-lonash-blue text-white py-4 rounded-xl font-bold text-lg hover:bg-blue-900 transition mt-4">Continue to Payment</button>
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-2">Special Requests (Optional)</label>
+                            <textarea x-model="bookingData.specialRequests" rows="3" placeholder="Any special requirements, dietary needs, accessibility requests, etc." class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-lonash-blue focus:border-lonash-blue outline-none transition"></textarea>
+                        </div>
+
+                        <div x-show="selectedTour" class="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-gray-600">Selected Tour:</p>
+                                    <p class="font-bold text-lonash-blue" x-text="selectedTour?.title"></p>
+                                    <p class="text-xs text-gray-500" x-show="selectedTour?.duration">
+                                        <span x-text="selectedTour?.duration"></span> • 
+                                        <span x-text="selectedTour?.category"></span>
+                                    </p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-sm text-gray-600">Total:</p>
+                                    <p class="text-xl font-bold text-lonash-orange" x-text="formattedAmount"></p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Error Message -->
+                        <div x-show="paymentError" x-cloak class="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl">
+                            <p class="font-medium" x-text="paymentError"></p>
+                        </div>
+
+                        <button @click="goToStep2()" class="w-full bg-lonash-blue text-white py-4 rounded-xl font-bold text-lg hover:bg-blue-900 transition mt-4">Continue to Payment</button>
                     </div>
                 </div>
 
@@ -221,15 +549,47 @@
                         <label class="block relative border-2 rounded-2xl p-6 cursor-pointer transition" :class="bookingData.paymentMethod === 'momo' ? 'border-lonash-blue bg-blue-50' : 'border-gray-200 hover:border-gray-300'">
                             <input type="radio" x-model="bookingData.paymentMethod" value="momo" class="absolute top-6 right-6 h-5 w-5 text-lonash-blue">
                             <div class="flex items-center space-x-4">
-                                <div class="bg-orange-100 p-3 rounded-full text-lonash-orange">
+                                <div class="bg-gradient-to-br from-yellow-400 via-red-500 to-blue-600 p-3 rounded-full text-white">
                                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
                                 </div>
-                                <div>
+                                <div class="flex-1">
                                     <h4 class="font-bold text-gray-900">Mobile Money (MTN, Telecel, AirtelTigo)</h4>
-                                    <p class="text-sm text-gray-600">Pay upfront via your preferred mobile wallet.</p>
+                                    <p class="text-sm text-gray-600">Pay instantly with your mobile wallet. Fast and secure.</p>
                                 </div>
                             </div>
                         </label>
+                    </div>
+
+                    <!-- Mobile Money Provider Selection -->
+                    <div x-show="bookingData.paymentMethod === 'momo'" x-cloak class="mb-8 bg-gradient-to-r from-yellow-50 via-red-50 to-blue-50 p-6 rounded-2xl border border-gray-200">
+                        <label class="block text-sm font-bold text-gray-700 mb-4">Select your Mobile Money provider:</label>
+                        <div class="grid grid-cols-3 gap-3">
+                            <label class="cursor-pointer">
+                                <input type="radio" x-model="bookingData.mobileMoneyProvider" value="mtn" class="hidden">
+                                <div :class="bookingData.mobileMoneyProvider === 'mtn' ? 'ring-2 ring-yellow-500 bg-yellow-50' : 'bg-white'" class="p-4 rounded-xl border-2 border-gray-200 hover:border-yellow-400 transition text-center">
+                                    <div class="w-12 h-12 mx-auto mb-2 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center text-white font-bold text-sm">MTN</div>
+                                    <p class="text-xs font-bold text-gray-700">MTN MoMo</p>
+                                </div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" x-model="bookingData.mobileMoneyProvider" value="telecel" class="hidden">
+                                <div :class="bookingData.mobileMoneyProvider === 'telecel' ? 'ring-2 ring-red-500 bg-red-50' : 'bg-white'" class="p-4 rounded-xl border-2 border-gray-200 hover:border-red-400 transition text-center">
+                                    <div class="w-12 h-12 mx-auto mb-2 bg-gradient-to-br from-red-500 to-red-700 rounded-full flex items-center justify-center text-white font-bold text-xs">VOD</div>
+                                    <p class="text-xs font-bold text-gray-700">Telecel Cash</p>
+                                </div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" x-model="bookingData.mobileMoneyProvider" value="airteltigo" class="hidden">
+                                <div :class="bookingData.mobileMoneyProvider === 'airteltigo' ? 'ring-2 ring-red-500 bg-red-50' : 'bg-white'" class="p-4 rounded-xl border-2 border-gray-200 hover:border-red-400 transition text-center">
+                                    <div class="w-12 h-12 mx-auto mb-2 bg-gradient-to-br from-red-600 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xs">AT</div>
+                                    <p class="text-xs font-bold text-gray-700">AirtelTigo</p>
+                                </div>
+                            </label>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-3 text-center">
+                            <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            You will receive a prompt on your phone to complete the payment
+                        </p>
                     </div>
 
                     <div class="bg-gray-50 p-6 rounded-2xl mb-8">
@@ -251,7 +611,10 @@
                         <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                     </div>
                     <h2 class="text-3xl font-bold text-lonash-blue mb-4">Inquiry Received!</h2>
-                    <p class="text-gray-600 mb-8 max-w-md mx-auto">Thank you, <span x-text="bookingData.name" class="font-bold"></span>. Your booking inquiry for <span class="font-bold" x-text="tours.find(t => t.id === bookingData.tourId)?.title || 'your trip'"></span> has been sent to our team.</p>
+                    <p class="text-gray-600 mb-2 max-w-md mx-auto">Thank you, <span x-text="bookingData.name" class="font-bold"></span>. Your booking inquiry for <span class="font-bold" x-text="tours.find(t => t.id === bookingData.tourId)?.title || 'your trip'"></span> has been sent to our team.</p>
+                    <div class="inline-block bg-lonash-blue/10 text-lonash-blue px-4 py-2 rounded-lg font-mono text-sm mb-8">
+                        Reference: <span x-text="bookingRef"></span>
+                    </div>
                     
                     <div class="bg-gray-50 p-6 rounded-2xl mb-8 text-left space-y-3">
                         <h4 class="font-bold text-gray-900 border-b pb-2 mb-4">Next Steps:</h4>

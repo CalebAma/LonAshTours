@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Destinations | LonAsh Tours</title>
+    <meta name="description" content="Explore the diverse regions and cultural landmarks of Ghana. Discover your next travel destination with LonAsh Tours.">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -24,9 +25,16 @@
     <style>
         body { font-family: 'Inter', sans-serif; }
         h1, h2, h3, .font-heading { font-family: 'Poppins', sans-serif; }
+        .map-container {
+            width: 100%;
+            height: 300px;
+            border-radius: 1rem;
+            overflow: hidden;
+            margin-top: 1.5rem;
+        }
     </style>
 </head>
-<body class="bg-gray-50" x-data="{ mobileMenuOpen: false }">
+<body class="bg-gray-50" x-data="{ mobileMenuOpen: false, activeRegion: 'central' }">
 
     <!-- Header / Navbar -->
     <header class="bg-white shadow-sm sticky top-0 z-50">
@@ -84,70 +92,106 @@
         <!-- Destinations Grid -->
         <section class="py-20">
             <div class="container mx-auto px-4">
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    <!-- Central Region (Cape Coast) -->
-                    <div class="relative group h-[400px] rounded-2xl overflow-hidden shadow-xl cursor-pointer">
-                        <img src="https://images.unsplash.com/photo-1620052739343-470a7f05359a?auto=format&fit=crop&q=80&w=600" alt="Central Region" class="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition duration-700">
-                        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
-                        <div class="absolute bottom-0 left-0 p-8 text-white">
-                            <h3 class="text-2xl font-bold mb-2">Central Region</h3>
-                            <p class="text-gray-200 mb-4 opacity-0 group-hover:opacity-100 transition duration-500">The historical heart of Ghana, home to the Cape Coast and Elmina Castles.</p>
-                            <a href="tours.html" class="bg-lonash-orange text-white px-6 py-2 rounded-full font-bold text-sm inline-block">Explore Region</a>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                    <!-- Regions List -->
+                    <div class="space-y-6">
+                        <!-- Central Region -->
+                        <div @click="activeRegion = 'central'" :class="activeRegion === 'central' ? 'border-lonash-blue bg-white shadow-xl' : 'border-transparent hover:bg-white/50'" class="p-6 rounded-3xl border-2 transition cursor-pointer reveal">
+                            <div class="flex items-center gap-6">
+                                <img src="https://images.unsplash.com/photo-1620052739343-470a7f05359a?auto=format&fit=crop&q=80&w=200" alt="Central Region" class="w-24 h-24 rounded-2xl object-cover">
+                                <div class="flex-1">
+                                    <h3 class="text-xl font-bold text-lonash-blue">Central Region</h3>
+                                    <p class="text-gray-600 text-sm">The historical heart of Ghana, home to the Cape Coast and Elmina Castles.</p>
+                                </div>
+                                <svg :class="activeRegion === 'central' ? 'rotate-90' : ''" class="w-6 h-6 text-gray-400 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                            </div>
+                            <div x-show="activeRegion === 'central'" x-collapse class="mt-6 pt-6 border-t">
+                                <p class="text-gray-700 mb-4 text-sm leading-relaxed">Experience the emotional journey through the dungeons of Cape Coast Castle, or walk among the trees at Kakum National Park. The Central Region offers a unique blend of history and nature.</p>
+                                <div class="flex gap-4">
+                                    <a href="tours.html?category=educational" class="bg-lonash-blue text-white px-6 py-2 rounded-full text-xs font-bold">View Tours</a>
+                                    <a href="booking.html" class="bg-lonash-orange text-white px-6 py-2 rounded-full text-xs font-bold">Book Trip</a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Greater Accra -->
+                        <div @click="activeRegion = 'accra'" :class="activeRegion === 'accra' ? 'border-lonash-blue bg-white shadow-xl' : 'border-transparent hover:bg-white/50'" class="p-6 rounded-3xl border-2 transition cursor-pointer reveal">
+                            <div class="flex items-center gap-6">
+                                <img src="https://images.unsplash.com/photo-1591129841117-3adfd313e34f?auto=format&fit=crop&q=80&w=200" alt="Greater Accra" class="w-24 h-24 rounded-2xl object-cover">
+                                <div class="flex-1">
+                                    <h3 class="text-xl font-bold text-lonash-blue">Greater Accra</h3>
+                                    <p class="text-gray-600 text-sm">The vibrant capital city with bustling markets, nightlife, and modern architecture.</p>
+                                </div>
+                                <svg :class="activeRegion === 'accra' ? 'rotate-90' : ''" class="w-6 h-6 text-gray-400 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                            </div>
+                            <div x-show="activeRegion === 'accra'" x-collapse class="mt-6 pt-6 border-t">
+                                <p class="text-gray-700 mb-4 text-sm leading-relaxed">From the historic Jamestown to the modern high-rises of Airport City, Accra is a melting pot of cultures. Visit the Kwame Nkrumah Memorial Park or relax at Labadi Beach.</p>
+                                <div class="flex gap-4">
+                                    <a href="tours.html" class="bg-lonash-blue text-white px-6 py-2 rounded-full text-xs font-bold">View Tours</a>
+                                    <a href="booking.html" class="bg-lonash-orange text-white px-6 py-2 rounded-full text-xs font-bold">Book Trip</a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Ashanti Region -->
+                        <div @click="activeRegion = 'ashanti'" :class="activeRegion === 'ashanti' ? 'border-lonash-blue bg-white shadow-xl' : 'border-transparent hover:bg-white/50'" class="p-6 rounded-3xl border-2 transition cursor-pointer reveal">
+                            <div class="flex items-center gap-6">
+                                <img src="https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&q=80&w=200" alt="Ashanti Region" class="w-24 h-24 rounded-2xl object-cover">
+                                <div class="flex-1">
+                                    <h3 class="text-xl font-bold text-lonash-blue">Ashanti Region</h3>
+                                    <p class="text-gray-600 text-sm">Discover the rich Asante culture, the Manhyia Palace, and the Kejetia Market.</p>
+                                </div>
+                                <svg :class="activeRegion === 'ashanti' ? 'rotate-90' : ''" class="w-6 h-6 text-gray-400 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                            </div>
+                            <div x-show="activeRegion === 'ashanti'" x-collapse class="mt-6 pt-6 border-t">
+                                <p class="text-gray-700 mb-4 text-sm leading-relaxed">Kumasi, the Garden City, is the seat of the Ashanti King. Explore the vast Kejetia market or learn about the legendary Golden Stool at the Manhyia Palace Museum.</p>
+                                <div class="flex gap-4">
+                                    <a href="tours.html" class="bg-lonash-blue text-white px-6 py-2 rounded-full text-xs font-bold">View Tours</a>
+                                    <a href="booking.html" class="bg-lonash-orange text-white px-6 py-2 rounded-full text-xs font-bold">Book Trip</a>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Greater Accra (Accra) -->
-                    <div class="relative group h-[400px] rounded-2xl overflow-hidden shadow-xl cursor-pointer">
-                        <img src="https://images.unsplash.com/photo-1591129841117-3adfd313e34f?auto=format&fit=crop&q=80&w=600" alt="Greater Accra" class="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition duration-700">
-                        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
-                        <div class="absolute bottom-0 left-0 p-8 text-white">
-                            <h3 class="text-2xl font-bold mb-2">Greater Accra</h3>
-                            <p class="text-gray-200 mb-4 opacity-0 group-hover:opacity-100 transition duration-500">The vibrant capital city with bustling markets, nightlife, and modern architecture.</p>
-                            <a href="tours.html" class="bg-lonash-orange text-white px-6 py-2 rounded-full font-bold text-sm inline-block">Explore Region</a>
-                        </div>
-                    </div>
+                    <!-- Map Display -->
+                    <div class="sticky top-32 h-fit reveal">
+                        <div class="bg-white p-4 rounded-[2rem] shadow-2xl border">
+                            <div class="map-container relative">
+                                <!-- Central Region Map -->
+                                <iframe x-show="activeRegion === 'central'" class="absolute inset-0 w-full h-full border-0" src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d127111.45831648786!2d-1.3323605891369796!3d5.138495078518881!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0xfde15383f982a85%3A0xf635835e985860e!2sCape%20Coast%20Castle!5e0!3m2!1sen!2sgh!4v1713435000000!5m2!1sen!2sgh" allowfullscreen="" loading="lazy"></iframe>
+                                
+                                <!-- Accra Map -->
+                                <iframe x-show="activeRegion === 'accra'" class="absolute inset-0 w-full h-full border-0" src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d127065.31135754024!2d-0.264628468307689!3d5.591242399999999!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0xfdf9a2636294727%3A0x7d6c6e755291410e!2sKwame%20Nkrumah%20Memorial%20Park%20%26%20Mausoleum!5e0!3m2!1sen!2sgh!4v1713435100000!5m2!1sen!2sgh" allowfullscreen="" loading="lazy"></iframe>
 
-                    <!-- Ashanti Region (Kumasi) -->
-                    <div class="relative group h-[400px] rounded-2xl overflow-hidden shadow-xl cursor-pointer">
-                        <img src="https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&q=80&w=600" alt="Ashanti Region" class="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition duration-700">
-                        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
-                        <div class="absolute bottom-0 left-0 p-8 text-white">
-                            <h3 class="text-2xl font-bold mb-2">Ashanti Region</h3>
-                            <p class="text-gray-200 mb-4 opacity-0 group-hover:opacity-100 transition duration-500">Discover the rich Asante culture, the Manhyia Palace, and the Kejetia Market.</p>
-                            <a href="tours.html" class="bg-lonash-orange text-white px-6 py-2 rounded-full font-bold text-sm inline-block">Explore Region</a>
-                        </div>
-                    </div>
-
-                    <!-- Northern Region (Mole) -->
-                    <div class="relative group h-[400px] rounded-2xl overflow-hidden shadow-xl cursor-pointer">
-                        <img src="https://images.unsplash.com/photo-1547471080-7cc2caa01a7e?auto=format&fit=crop&q=80&w=600" alt="Northern Region" class="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition duration-700">
-                        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
-                        <div class="absolute bottom-0 left-0 p-8 text-white">
-                            <h3 class="text-2xl font-bold mb-2">Northern Region</h3>
-                            <p class="text-gray-200 mb-4 opacity-0 group-hover:opacity-100 transition duration-500">The wild side of Ghana, famous for the Mole National Park and Larabanga Mosque.</p>
-                            <a href="tours.html" class="bg-lonash-orange text-white px-6 py-2 rounded-full font-bold text-sm inline-block">Explore Region</a>
-                        </div>
-                    </div>
-
-                    <!-- Volta Region (Wli Falls) -->
-                    <div class="relative group h-[400px] rounded-2xl overflow-hidden shadow-xl cursor-pointer">
-                        <img src="https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&q=80&w=600" alt="Volta Region" class="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition duration-700">
-                        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
-                        <div class="absolute bottom-0 left-0 p-8 text-white">
-                            <h3 class="text-2xl font-bold mb-2">Volta Region</h3>
-                            <p class="text-gray-200 mb-4 opacity-0 group-hover:opacity-100 transition duration-500">A landscape of mountains, waterfalls, and the scenic Volta Lake.</p>
-                            <a href="tours.html" class="bg-lonash-orange text-white px-6 py-2 rounded-full font-bold text-sm inline-block">Explore Region</a>
-                        </div>
-                    </div>
-
-                    <!-- Western Region (Busua) -->
-                    <div class="relative group h-[400px] rounded-2xl overflow-hidden shadow-xl cursor-pointer">
-                        <img src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&q=80&w=600" alt="Western Region" class="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition duration-700">
-                        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
-                        <div class="absolute bottom-0 left-0 p-8 text-white">
-                            <h3 class="text-2xl font-bold mb-2">Western Region</h3>
-                            <p class="text-gray-200 mb-4 opacity-0 group-hover:opacity-100 transition duration-500">The land of golden beaches, oil heritage, and stilt villages like Nzulezu.</p>
-                            <a href="tours.html" class="bg-lonash-orange text-white px-6 py-2 rounded-full font-bold text-sm inline-block">Explore Region</a>
+                                <!-- Ashanti Map -->
+                                <iframe x-show="activeRegion === 'ashanti'" class="absolute inset-0 w-full h-full border-0" src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d126831.6231018861!2d-1.6835266453124996!3d6.685040999999999!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0xfdb96ea6e890c27%3A0xc002f2323e67c875!2sManhyia%20Palace!5e0!3m2!1sen!2sgh!4v1713435200000!5m2!1sen!2sgh" allowfullscreen="" loading="lazy"></iframe>
+                            </div>
+                            <div class="mt-6 p-4">
+                                <h4 class="font-bold text-lonash-blue mb-2" x-text="activeRegion.charAt(0).toUpperCase() + activeRegion.slice(1) + ' Region Highlights'"></h4>
+                                <div class="flex flex-wrap gap-2">
+                                    <template x-if="activeRegion === 'central'">
+                                        <div class="flex flex-wrap gap-2">
+                                            <span class="bg-blue-50 text-lonash-blue px-3 py-1 rounded-full text-xs font-medium border border-blue-100">Cape Coast Castle</span>
+                                            <span class="bg-blue-50 text-lonash-blue px-3 py-1 rounded-full text-xs font-medium border border-blue-100">Kakum National Park</span>
+                                            <span class="bg-blue-50 text-lonash-blue px-3 py-1 rounded-full text-xs font-medium border border-blue-100">Elmina Castle</span>
+                                        </div>
+                                    </template>
+                                    <template x-if="activeRegion === 'accra'">
+                                        <div class="flex flex-wrap gap-2">
+                                            <span class="bg-blue-50 text-lonash-blue px-3 py-1 rounded-full text-xs font-medium border border-blue-100">Independence Square</span>
+                                            <span class="bg-blue-50 text-lonash-blue px-3 py-1 rounded-full text-xs font-medium border border-blue-100">Osu Castle</span>
+                                            <span class="bg-blue-50 text-lonash-blue px-3 py-1 rounded-full text-xs font-medium border border-blue-100">Makola Market</span>
+                                        </div>
+                                    </template>
+                                    <template x-if="activeRegion === 'ashanti'">
+                                        <div class="flex flex-wrap gap-2">
+                                            <span class="bg-blue-50 text-lonash-blue px-3 py-1 rounded-full text-xs font-medium border border-blue-100">Lake Bosomtwe</span>
+                                            <span class="bg-blue-50 text-lonash-blue px-3 py-1 rounded-full text-xs font-medium border border-blue-100">Kumasi Zoo</span>
+                                            <span class="bg-blue-50 text-lonash-blue px-3 py-1 rounded-full text-xs font-medium border border-blue-100">Cultural Centre</span>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

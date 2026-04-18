@@ -1,0 +1,19 @@
+[debug] [2026-04-18T15:02:30.745Z] ----------------------------------------------------------------------
+[debug] [2026-04-18T15:02:30.852Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\CALEB A. AMARH\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js init
+[debug] [2026-04-18T15:02:30.856Z] CLI Version:   15.9.1
+[debug] [2026-04-18T15:02:30.857Z] Platform:      win32
+[debug] [2026-04-18T15:02:30.860Z] Node Version:  v24.13.0
+[debug] [2026-04-18T15:02:30.863Z] Time:          Sat Apr 18 2026 15:02:30 GMT+0000 (Coordinated Universal Time)
+[debug] [2026-04-18T15:02:30.863Z] ----------------------------------------------------------------------
+[debug] 
+[info] 
+     ######## #### ########  ######## ########     ###     ######  ########
+     ##        ##  ##     ## ##       ##     ##  ##   ##  ##       ##
+     ######    ##  ########  ######   ########  #########  ######  ######
+     ##        ##  ##    ##  ##       ##     ## ##     ##       ## ##
+     ##       #### ##     ## ######## ########  ##     ##  ######  ########
+
+You're about to initialize a Firebase project in this directory:
+
+  C:\Users\CALEB A. AMARH\Desktop\Projects\Tourist
+
