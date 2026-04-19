@@ -1,19 +1,14 @@
 /**
  * LonAsh Tours Backend API
- * 
- * Features:
- * - Paystack payment verification
- * - Webhook handling for payment status updates
- * - Firebase Firestore integration for booking management
- * - CORS enabled for frontend integration
+ *
+ * Optional Paystack helpers for future online payments.
+ * Booking storage previously used Firebase Firestore — removed; enable your own store when needed.
  */
 
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
-const admin = require('firebase-admin');
-const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -23,8 +18,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // CORS Configuration
-const allowedOrigins = process.env.ALLOWED_ORIGINS 
-  ? process.env.ALLOWED_ORIGINS.split(',') 
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',')
   : ['http://localhost:8080', 'http://localhost:3000'];
 
 app.use(cors({
@@ -39,36 +34,6 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Initialize Firebase Admin
-let db;
-try {
-  const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH || './firebase-service-account.json';
-  const serviceAccount = require(path.resolve(serviceAccountPath));
-  
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount)
-  });
-  
-  db = admin.firestore();
-  console.log('Firebase Admin initialized successfully');
-} catch (error) {
-  console.warn('Firebase Admin not initialized - using mock mode for development');
-  console.warn('Error:', error.message);
-  // Mock db for development
-  db = {
-    collection: () => ({
-      doc: () => ({
-        update: async () => ({ success: true }),
-        get: async () => ({ exists: true, data: () => ({}) })
-      }),
-      add: async () => ({ id: 'mock-id' }),
-      where: () => ({
-        get: async () => ({ docs: [], empty: true })
-      })
-    })
-  };
-}
-
 // Paystack Configuration
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
 const PAYSTACK_BASE_URL = 'https://api.paystack.co';
@@ -82,9 +47,9 @@ app.post('/api/verify-payment', async (req, res) => {
     const { reference, bookingId } = req.body;
 
     if (!reference) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Transaction reference is required' 
+      return res.status(400).json({
+        success: false,
+        message: 'Transaction reference is required'
       });
     }
 
@@ -95,7 +60,6 @@ app.post('/api/verify-payment', async (req, res) => {
       });
     }
 
-    // Verify transaction with Paystack
     const response = await axios.get(
       `${PAYSTACK_BASE_URL}/transaction/verify/${reference}`,
       {
@@ -109,26 +73,21 @@ app.post('/api/verify-payment', async (req, res) => {
     const { data } = response.data;
 
     if (data.status === 'success') {
-      // Payment successful - update booking in Firestore
-      const updateData = {
-        paymentStatus: 'Paid',
-        status: 'Confirmed',
-        paymentReference: reference,
-        paymentVerifiedAt: new Date().toISOString(),
-        paymentAmount: data.amount / 100, // Convert from pesewas to GHS
-        paymentChannel: data.channel,
-        paidAt: data.paid_at,
-        currency: data.currency
-      };
-
-      // Update booking if bookingId provided
-      if (bookingId && db) {
-        try {
-          await db.collection('bookings').doc(bookingId).update(updateData);
-          console.log(`Booking ${bookingId} updated with payment confirmation`);
-        } catch (dbError) {
-          console.error('Error updating booking:', dbError);
-        }
+      /*
+       * Firebase / Firestore — previously updated booking document here.
+       * Payment integration temporarily disabled on the public site (Pay on Arrival).
+       * Reconnect your database when bringing Paystack + persistence back online.
+       *
+       * Example (do not use without Firebase):
+       * await db.collection('bookings').doc(bookingId).update({
+       *   paymentStatus: 'Paid',
+       *   status: 'Confirmed',
+       *   paymentReference: reference,
+       *   ...
+       * });
+       */
+      if (bookingId) {
+        console.log(`Payment verified for reference ${reference} (booking id hint: ${bookingId}) — no persistence layer configured.`);
       }
 
       return res.json({
@@ -141,16 +100,16 @@ app.post('/api/verify-payment', async (req, res) => {
           status: data.status,
           paid_at: data.paid_at,
           channel: data.channel,
-          booking_updated: !!bookingId
+          booking_updated: false
         }
       });
-    } else {
-      return res.json({
-        success: false,
-        message: `Payment verification failed: ${data.gateway_response || data.status}`,
-        data: { status: data.status }
-      });
     }
+
+    return res.json({
+      success: false,
+      message: `Payment verification failed: ${data.gateway_response || data.status}`,
+      data: { status: data.status }
+    });
   } catch (error) {
     console.error('Payment verification error:', error.response?.data || error.message);
     return res.status(500).json({
@@ -167,12 +126,12 @@ app.post('/api/verify-payment', async (req, res) => {
  */
 app.post('/api/initiate-payment', async (req, res) => {
   try {
-    const { 
-      email, 
-      amount, 
+    const {
+      email,
+      amount,
       metadata = {},
       callback_url,
-      mobile_money = true // Enable mobile money
+      mobile_money = true
     } = req.body;
 
     if (!email || !amount) {
@@ -189,14 +148,13 @@ app.post('/api/initiate-payment', async (req, res) => {
       });
     }
 
-    // Add mobile money channels
-    const channels = ['card', 'mobile_money'];
+    const channels = mobile_money ? ['card', 'mobile_money'] : ['card'];
 
     const response = await axios.post(
       `${PAYSTACK_BASE_URL}/transaction/initialize`,
       {
         email,
-        amount: Math.round(amount * 100), // Convert to pesewas
+        amount: Math.round(amount * 100),
         metadata,
         callback_url,
         channels
@@ -237,61 +195,20 @@ app.post('/api/initiate-payment', async (req, res) => {
 app.post('/api/webhook/paystack', async (req, res) => {
   try {
     const event = req.body;
-    
+
     console.log('Paystack webhook received:', event.event);
 
-    // Handle charge.success event
     if (event.event === 'charge.success') {
-      const { data } = event;
-      
-      // Extract booking ID from metadata if available
-      const bookingId = data.metadata?.booking_id;
-      
-      const updateData = {
-        paymentStatus: 'Paid',
-        status: 'Confirmed',
-        paymentReference: data.reference,
-        paymentVerifiedAt: new Date().toISOString(),
-        paymentAmount: data.amount / 100,
-        paymentChannel: data.channel,
-        paidAt: data.paid_at,
-        currency: data.currency,
-        gateway_response: data.gateway_response
-      };
-
-      // Update booking in Firestore
-      if (bookingId && db) {
-        try {
-          await db.collection('bookings').doc(bookingId).update(updateData);
-          console.log(`Booking ${bookingId} updated via webhook`);
-        } catch (dbError) {
-          console.error('Error updating booking via webhook:', dbError);
-        }
-      }
-
-      // Also update by reference if no booking_id in metadata
-      try {
-        const bookingsRef = db.collection('bookings');
-        const snapshot = await bookingsRef
-          .where('paymentReference', '==', data.reference)
-          .get();
-        
-        if (!snapshot.empty) {
-          snapshot.forEach(async (doc) => {
-            await doc.ref.update(updateData);
-            console.log(`Booking ${doc.id} updated via webhook (reference match)`);
-          });
-        }
-      } catch (searchError) {
-        console.error('Error searching for booking by reference:', searchError);
-      }
+      /*
+       * Firebase / Firestore — previously updated bookings from webhook payload.
+       * Payment integration temporarily disabled on the public site.
+       */
+      console.log('charge.success received — persistence disabled (no Firebase).');
     }
 
-    // Return 200 to acknowledge receipt
     return res.status(200).json({ received: true });
   } catch (error) {
     console.error('Webhook error:', error);
-    // Still return 200 to prevent Paystack from retrying
     return res.status(200).json({ received: true, error: error.message });
   }
 });
@@ -343,8 +260,7 @@ app.get('/api/health', (req, res) => {
   res.json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
-    paystack_configured: !!PAYSTACK_SECRET_KEY,
-    firebase_configured: !!db
+    paystack_configured: !!PAYSTACK_SECRET_KEY
   });
 });
 
@@ -370,7 +286,7 @@ app.listen(PORT, () => {
 Server running on port: ${PORT}
 Environment: ${process.env.NODE_ENV || 'development'}
 Paystack: ${PAYSTACK_SECRET_KEY ? '✓ Configured' : '✗ Not configured'}
-Firebase: ${db ? '✓ Connected' : '✗ Not connected'}
+Firebase: removed (static site + Netlify Forms handle bookings)
 
 Available endpoints:
   POST /api/verify-payment    - Verify Paystack transaction

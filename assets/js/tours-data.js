@@ -1,7 +1,6 @@
 /**
  * LonAsh Tours — Static Tour Data
- * Used as fallback when Firebase is not configured or as seed data.
- * Each tour matches the Firestore schema used in the live system.
+ * Static seed data for tours (used by the marketing site and demos).
  */
 
 export const staticTours = [
@@ -112,8 +111,7 @@ export const staticTours = [
 ];
 
 /**
- * Get tours — returns static data (for use without Firebase)
- * Admin can seed these to Firestore when the project is live
+ * Get tours — returns static data
  */
 export const getFeaturedTours = () => staticTours.filter(t => t.popular).slice(0, 3);
 export const getAllTours = () => staticTours;

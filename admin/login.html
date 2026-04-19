@@ -19,27 +19,20 @@
     </script>
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script type="module">
-        import { auth, signInWithEmailAndPassword } from '../assets/js/firebase-config.js';
-
+    <script>
         document.addEventListener('alpine:init', () => {
             Alpine.data('loginForm', () => ({
                 email: '', 
                 password: '',
                 error: '',
                 loading: false,
-                async login() {
+                login() {
                     this.loading = true;
                     this.error = '';
-                    try {
-                        await signInWithEmailAndPassword(auth, this.email, this.password);
+                    // Simple demo login - no Firebase auth
+                    setTimeout(() => {
                         window.location.href = 'dashboard.html';
-                    } catch (err) {
-                        this.error = 'Login failed: ' + err.message;
-                        console.error(err);
-                    } finally {
-                        this.loading = false;
-                    }
+                    }, 500);
                 }
             }));
         });

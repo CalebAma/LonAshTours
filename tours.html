@@ -22,9 +22,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
     <!-- Custom CSS -->
     <link rel="stylesheet" href="assets/css/styles.css">
-    <script type="module">
-        import { db, collection, query, orderBy, onSnapshot } from './assets/js/firebase-config.js';
-
+    <script>
         document.addEventListener('alpine:init', () => {
             Alpine.data('toursPage', () => ({
                 mobileMenuOpen: false,
@@ -38,35 +36,12 @@
                 sortBy: 'featured',
 
                 async init() {
-                    // Check if Firebase is in mock mode
-                    if (db._mock) {
-                        console.log('Using sample tour data');
-                        this.tours = this.getSampleTours();
-                        this.loading = false;
-                        return;
-                    }
-                    
-                    try {
-                        const toursQuery = query(collection(db, 'tours'), orderBy('createdAt', 'desc'));
-                        onSnapshot(toursQuery, (snapshot) => {
-                            this.tours = snapshot.docs.map(doc => ({
-                                id: doc.id,
-                                ...doc.data()
-                            }));
-                            this.loading = false;
-                        }, (error) => {
-                            console.error('Error loading tours:', error);
-                            this.tours = this.getSampleTours();
-                            this.loading = false;
-                        });
-                    } catch (error) {
-                        console.error('Error initializing tours:', error);
-                        this.tours = this.getSampleTours();
-                        this.loading = false;
-                    }
+                    // Static tour data - no Firebase
+                    this.tours = this.getToursData();
+                    this.loading = false;
                 },
 
-                getSampleTours() {
+                getToursData() {
                     return [
                         {
                             id: 'tour-1',
@@ -78,8 +53,7 @@
                             image: 'https://images.unsplash.com/photo-1590059300300-8446908502f6?auto=format&fit=crop&q=80&w=800',
                             description: 'Explore the historic Cape Coast Castle and Elmina Castle, UNESCO World Heritage sites that tell the story of Ghana\'s past.',
                             highlights: ['Cape Coast Castle', 'Elmina Castle', 'Fish Market'],
-                            includes: ['Professional guide', 'Transportation', 'Lunch', 'Entrance fees'],
-                            createdAt: new Date().toISOString()
+                            includes: ['Professional guide', 'Transportation', 'Lunch', 'Entrance fees']
                         },
                         {
                             id: 'tour-2',
@@ -91,8 +65,7 @@
                             image: 'https://images.unsplash.com/photo-1516426122078-c23e76319801?auto=format&fit=crop&q=80&w=800',
                             description: 'Experience the thrill of walking among the treetops on the famous canopy walkway at Kakum National Park.',
                             highlights: ['Canopy Walkway', 'Rainforest Hike', 'Wildlife Viewing'],
-                            includes: ['Park entrance', 'Guide', 'Safety equipment', 'Water'],
-                            createdAt: new Date().toISOString()
+                            includes: ['Park entrance', 'Guide', 'Safety equipment', 'Water']
                         },
                         {
                             id: 'tour-3',
@@ -104,8 +77,7 @@
                             image: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&q=80&w=800',
                             description: 'Discover the vibrant capital city of Ghana with visits to historical sites, markets, and cultural centers.',
                             highlights: ['Independence Square', 'Makola Market', 'Arts Centre'],
-                            includes: ['Air-conditioned vehicle', 'Local guide', 'Bottled water', 'Snacks'],
-                            createdAt: new Date().toISOString()
+                            includes: ['Air-conditioned vehicle', 'Local guide', 'Bottled water', 'Snacks']
                         },
                         {
                             id: 'tour-4',
@@ -117,8 +89,7 @@
                             image: 'https://images.unsplash.com/photo-1547471080-7cc2caa01a7e?auto=format&fit=crop&q=80&w=800',
                             description: 'An unforgettable safari experience in Ghana\'s largest wildlife refuge. See elephants, antelopes, and more.',
                             highlights: ['Elephant sightings', 'Walking safari', 'Bird watching', 'Larabanga Mosque'],
-                            includes: ['2 nights accommodation', 'All meals', 'Park fees', 'Expert guides'],
-                            createdAt: new Date().toISOString()
+                            includes: ['2 nights accommodation', 'All meals', 'Park fees', 'Expert guides']
                         },
                         {
                             id: 'tour-5',
@@ -130,8 +101,7 @@
                             image: 'https://images.unsplash.com/photo-1432405972618-c60b0225b8f9?auto=format&fit=crop&q=80&w=800',
                             description: 'Visit the stunning Wli Waterfalls, the highest in West Africa, and enjoy the serene beauty of the Volta Region.',
                             highlights: ['Wli Waterfalls', 'Tagbo Falls', 'Local villages'],
-                            includes: ['1 night accommodation', 'Meals', 'Transportation', 'Guide'],
-                            createdAt: new Date().toISOString()
+                            includes: ['1 night accommodation', 'Meals', 'Transportation', 'Guide']
                         },
                         {
                             id: 'tour-6',
@@ -143,8 +113,7 @@
                             image: 'https://images.unsplash.com/photo-1489493887464-892be6d1daae?auto=format&fit=crop&q=80&w=800',
                             description: 'Immerse yourself in Ashanti culture with visits to the Manhyia Palace, craft villages, and traditional ceremonies.',
                             highlights: ['Manhyia Palace', 'Kejetia Market', 'Adanwomase Kente'],
-                            includes: ['1 night hotel', 'Breakfast', 'Professional guide', 'All entrance fees'],
-                            createdAt: new Date().toISOString()
+                            includes: ['1 night hotel', 'Breakfast', 'Professional guide', 'All entrance fees']
                         }
                     ];
                 },

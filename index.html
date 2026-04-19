@@ -25,9 +25,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
     <!-- Custom CSS -->
     <link rel="stylesheet" href="assets/css/styles.css">
-    <script type="module">
-        import { db, collection, query, orderBy, onSnapshot, limit } from './assets/js/firebase-config.js';
-
+    <script>
         document.addEventListener('alpine:init', () => {
             Alpine.data('homePage', () => ({
                 mobileMenuOpen: false,
@@ -35,36 +33,8 @@
                 loading: true,
 
                 async init() {
-                    // Check if Firebase is in mock mode
-                    if (db._mock) {
-                        console.log('Using sample featured tours data');
-                        this.featuredTours = this.getSampleFeaturedTours();
-                        this.loading = false;
-                        return;
-                    }
-                    
-                    try {
-                        const toursQuery = query(collection(db, 'tours'), orderBy('createdAt', 'desc'), limit(3));
-                        onSnapshot(toursQuery, (snapshot) => {
-                            this.featuredTours = snapshot.docs.map(doc => ({
-                                id: doc.id,
-                                ...doc.data()
-                            }));
-                            this.loading = false;
-                        }, (error) => {
-                            console.error('Error loading featured tours:', error);
-                            this.featuredTours = this.getSampleFeaturedTours();
-                            this.loading = false;
-                        });
-                    } catch (error) {
-                        console.error('Error initializing featured tours:', error);
-                        this.featuredTours = this.getSampleFeaturedTours();
-                        this.loading = false;
-                    }
-                },
-
-                getSampleFeaturedTours() {
-                    return [
+                    // Static featured tours - no Firebase
+                    this.featuredTours = [
                         {
                             id: 'tour-1',
                             title: 'Cape Coast Castle & Elmina Tour',
@@ -96,6 +66,7 @@
                             description: 'An unforgettable safari experience. See elephants, antelopes, and more.'
                         }
                     ];
+                    this.loading = false;
                 }
             }));
         });

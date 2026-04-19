@@ -6,17 +6,16 @@
  */
 
 const CONFIG = {
-  // Paystack Configuration (PUBLIC KEY ONLY)
-  paystack: {
-    // Replace with your actual Paystack public key (starts with pk_test_ or pk_live_)
-    publicKey: 'pk_test_YOUR_PUBLIC_KEY_HERE',
-    
-    // Currency code
-    currency: 'GHS',
-    
-    // Payment channels (will be enabled in Paystack dashboard)
-    channels: ['card', 'mobile_money']
-  },
+  /*
+   * Payment integration temporarily disabled — site uses Pay on Arrival + Netlify Forms.
+   * Paystack or other payment config (public key only — never secrets):
+   *
+   * paystack: {
+   *   publicKey: 'pk_test_YOUR_PUBLIC_KEY_HERE',
+   *   currency: 'GHS',
+   *   channels: ['card', 'mobile_money']
+   * },
+   */
 
   // Google Maps Configuration
   googleMaps: {
@@ -91,8 +90,8 @@ const CONFIG = {
 
   // Feature Flags
   features: {
-    enablePaystack: true,
-    enableMobileMoney: true,
+    enablePaystack: false,
+    enableMobileMoney: false,
     enableWhatsAppChat: true,
     enableCustomTrips: true,
     enableReviews: true

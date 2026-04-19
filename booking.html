@@ -22,19 +22,19 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
     <!-- Custom CSS -->
     <link rel="stylesheet" href="assets/css/styles.css">
-    <!-- Paystack SDK -->
+    <!-- 
+    PAYMENT INTEGRATION - COMMENTED OUT FOR NOW
     <script src="https://js.paystack.co/v1/inline.js"></script>
-    <!-- Configuration -->
     <script src="assets/js/config.js"></script>
+    -->
     
-    <script type="module">
-        import { db, collection, addDoc, query, orderBy, onSnapshot, doc, updateDoc } from './assets/js/firebase-config.js';
-
+    <script>
         document.addEventListener('alpine:init', () => {
             Alpine.data('bookingForm', () => ({
                 mobileMenuOpen: false,
                 step: 1,
                 loading: false,
+                paymentError: '',
                 bookingData: {
                     name: '',
                     email: '',
@@ -44,15 +44,11 @@
                     travelers: 1,
                     message: '',
                     specialRequests: '',
-                    paymentMethod: 'arrival',
-                    amount: 0,
-                    mobileMoneyProvider: 'mtn' // mtn, telecel, airteltigo
+                    paymentMethod: 'arrival'
                 },
                 tours: [],
                 bookingRef: '',
-                bookingId: '',
-                paymentError: '',
-                apiBaseUrl: window.location.hostname === 'localhost' ? 'http://localhost:3000' : 'https://api.lonashtours.com',
+                submitted: false,
                 
                 async init() {
                     // Pre-select tour if ID is in URL
@@ -62,47 +58,24 @@
                         this.bookingData.tourId = tourId;
                     }
 
-                    // Check if Firebase is in mock mode
-                    if (db._mock) {
-                        console.log('Using sample tours data for booking');
-                        this.tours = this.getSampleTours();
-                        return;
-                    }
+                    // Static tours data - no Firebase
+                    this.tours = [
+                        { id: 'tour-1', title: 'Cape Coast Castle & Elmina Tour', category: 'Educational', price: 450, duration: '1 Day' },
+                        { id: 'tour-2', title: 'Kakum National Park Canopy Walk', category: 'Adventure', price: 320, duration: '1 Day' },
+                        { id: 'tour-3', title: 'Accra City Experience', category: 'Cultural', price: 380, duration: '1 Day' },
+                        { id: 'tour-4', title: 'Mole National Park Safari', category: 'Wildlife', price: 1200, duration: '3 Days' },
+                        { id: 'tour-5', title: 'Volta Region Waterfalls', category: 'Nature', price: 550, duration: '2 Days' },
+                        { id: 'tour-6', title: 'Ashanti Cultural Heritage', category: 'Cultural', price: 680, duration: '2 Days' }
+                    ];
 
-                    try {
-                        // Fetch tours from Firestore
-                        const toursQuery = query(collection(db, 'tours'), orderBy('createdAt', 'desc'));
-                        onSnapshot(toursQuery, (snapshot) => {
-                            this.tours = snapshot.docs.map(doc => ({
-                                id: doc.id,
-                                ...doc.data()
-                            }));
-                        }, (error) => {
-                            console.error('Error loading tours:', error);
-                            this.tours = this.getSampleTours();
-                        });
-                    } catch (error) {
-                        console.error('Error initializing tours:', error);
-                        this.tours = this.getSampleTours();
-                    }
-
+                    /* PAYMENT INTEGRATION - COMMENTED OUT
                     // Check for payment return (from Paystack redirect)
                     const paymentRef = urlParams.get('reference');
                     const trxref = urlParams.get('trxref');
                     if (paymentRef || trxref) {
                         this.verifyPaymentOnReturn(paymentRef || trxref);
                     }
-                },
-
-                getSampleTours() {
-                    return [
-                        { id: 'tour-1', title: 'Cape Coast Castle & Elmina Tour', category: 'Educational', price: 450, duration: '1 Day', featured: true },
-                        { id: 'tour-2', title: 'Kakum National Park Canopy Walk', category: 'Adventure', price: 320, duration: '1 Day', featured: true },
-                        { id: 'tour-3', title: 'Accra City Experience', category: 'Cultural', price: 380, duration: '1 Day', featured: false },
-                        { id: 'tour-4', title: 'Mole National Park Safari', category: 'Wildlife', price: 1200, duration: '3 Days', featured: true },
-                        { id: 'tour-5', title: 'Volta Region Waterfalls', category: 'Nature', price: 550, duration: '2 Days', featured: false },
-                        { id: 'tour-6', title: 'Ashanti Cultural Heritage', category: 'Cultural', price: 680, duration: '2 Days', featured: false }
-                    ];
+                    */
                 },
 
                 get selectedTour() {
@@ -154,54 +127,46 @@
                 },
 
                 async submitBooking() {
+                    if (this.step !== 2) return;
                     this.paymentError = '';
-                    
-                    // Check if Firebase is in mock mode (Pay on Arrival)
-                    if (db._mock && this.bookingData.paymentMethod === 'arrival') {
-                        console.log('Demo mode: Simulating booking submission');
-                        this.loading = true;
-                        await new Promise(resolve => setTimeout(resolve, 1000));
-                        const tourTitle = this.selectedTour ? this.selectedTour.title : 'Custom Package';
-                        const ref = 'LON-' + Math.random().toString(36).substring(2, 7).toUpperCase();
-                        this.bookingRef = ref;
-                        this.bookingId = 'demo-' + Date.now();
-                        this.step = 3;
-                        this.loading = false;
-                        return;
-                    }
-                    
-                    if (this.bookingData.paymentMethod === 'momo') {
-                        await this.payWithPaystack();
-                        return;
-                    }
-                    
                     this.loading = true;
                     try {
                         const tourTitle = this.selectedTour ? this.selectedTour.title : 'Custom Package';
                         const ref = 'LON-' + Math.random().toString(36).substring(2, 7).toUpperCase();
-                        
-                        const docRef = await addDoc(collection(db, 'bookings'), {
-                            ...this.bookingData,
-                            tour: tourTitle,
-                            tourId: this.bookingData.tourId,
-                            status: 'Pending',
-                            paymentStatus: 'Unpaid',
-                            amount: this.totalAmount,
-                            bookingRef: ref,
-                            createdAt: new Date().toISOString()
-                        });
-                        
                         this.bookingRef = ref;
-                        this.bookingId = docRef.id;
+                        await this.$nextTick();
+
+                        const form = this.$refs.netlifyForm;
+                        if (!form) throw new Error('Booking form is not ready.');
+
+                        const body = new URLSearchParams(new FormData(form));
+                        body.set('tour-title', tourTitle);
+                        body.set('estimated-total-ghs', String(this.totalAmount));
+                        body.set('payment-method', 'Pay on Arrival');
+                        body.set('booking-reference', ref);
+
+                        const res = await fetch('/', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                            body: body.toString()
+                        });
+
+                        if (!res.ok) {
+                            throw new Error('Could not submit your booking. If you are testing locally, deploy the site to Netlify so forms can be processed.');
+                        }
+
+                        this.submitted = true;
                         this.step = 3;
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
                     } catch (err) {
-                        this.paymentError = 'Booking failed: ' + err.message;
+                        this.paymentError = err.message || 'Something went wrong. Please try again.';
                         console.error(err);
                     } finally {
                         this.loading = false;
                     }
                 },
 
+                /* PAYMENT INTEGRATION - COMMENTED OUT
                 async payWithPaystack() {
                     this.loading = true;
                     this.paymentError = '';
@@ -358,6 +323,7 @@
                         this.loading = false;
                     }
                 },
+                /* END PAYMENT INTEGRATION COMMENT */
 
                 formatCurrency(amount) {
                     return new Intl.NumberFormat('en-GH', { 
@@ -447,12 +413,28 @@
                 </div>
                 <div class="flex justify-between mt-2 text-sm font-medium text-gray-600">
                     <span>Details</span>
-                    <span>Payment</span>
+                    <span>Review</span>
                     <span>Confirm</span>
                 </div>
             </div>
 
             <div class="bg-white rounded-3xl shadow-xl overflow-hidden">
+                <form
+                    name="booking"
+                    method="POST"
+                    data-netlify="true"
+                    netlify-honeypot="bot-field"
+                    x-ref="netlifyForm"
+                    @submit.prevent="submitBooking()"
+                >
+                    <input type="hidden" name="form-name" value="booking" />
+                    <p class="hidden" aria-hidden="true">
+                        <label>Do not fill this out: <input name="bot-field" autocomplete="off" /></label>
+                    </p>
+                    <input type="hidden" name="tour-title" :value="selectedTour?.title || ''" />
+                    <input type="hidden" name="estimated-total-ghs" :value="totalAmount" />
+                    <input type="hidden" name="payment-method" value="Pay on Arrival" />
+                    <input type="hidden" name="booking-reference" :value="bookingRef" />
                 <!-- Step 1: Booking Details -->
                 <div x-show="step === 1" class="p-8 md:p-12">
                     <h2 class="text-3xl font-bold text-lonash-blue mb-2">Trip Details</h2>
@@ -461,7 +443,7 @@
                     <div class="space-y-6">
                         <div>
                             <label class="block text-sm font-bold text-gray-700 mb-2">Select Tour Package</label>
-                            <select x-model="bookingData.tourId" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-lonash-blue focus:border-lonash-blue outline-none transition">
+                            <select name="tour-id" x-model="bookingData.tourId" required class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-lonash-blue focus:border-lonash-blue outline-none transition">
                                 <option value="">-- Choose a package --</option>
                                 <template x-for="tour in tours" :key="tour.id">
                                     <option :value="tour.id" x-text="tour.title"></option>
@@ -472,33 +454,33 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label class="block text-sm font-bold text-gray-700 mb-2">Preferred Date</label>
-                                <input type="date" x-model="bookingData.date" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-lonash-blue focus:border-lonash-blue outline-none transition">
+                                <input type="date" name="preferred-date" x-model="bookingData.date" required class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-lonash-blue focus:border-lonash-blue outline-none transition">
                             </div>
                             <div>
                                 <label class="block text-sm font-bold text-gray-700 mb-2">Number of Travelers</label>
-                                <input type="number" min="1" x-model="bookingData.travelers" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-lonash-blue focus:border-lonash-blue outline-none transition">
+                                <input type="number" name="travelers" min="1" x-model.number="bookingData.travelers" required class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-lonash-blue focus:border-lonash-blue outline-none transition">
                             </div>
                         </div>
 
                         <div>
                             <label class="block text-sm font-bold text-gray-700 mb-2">Your Name</label>
-                            <input type="text" x-model="bookingData.name" placeholder="Enter Fullname" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-lonash-blue focus:border-lonash-blue outline-none transition">
+                            <input type="text" name="customer-name" x-model="bookingData.name" required minlength="2" placeholder="Enter Fullname" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-lonash-blue focus:border-lonash-blue outline-none transition">
                         </div>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label class="block text-sm font-bold text-gray-700 mb-2">Email Address</label>
-                                <input type="email" x-model="bookingData.email" placeholder="Enter email address" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-lonash-blue focus:border-lonash-blue outline-none transition">
+                                <input type="email" name="email" x-model="bookingData.email" required placeholder="Enter email address" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-lonash-blue focus:border-lonash-blue outline-none transition">
                             </div>
                             <div>
                                 <label class="block text-sm font-bold text-gray-700 mb-2">Phone Number</label>
-                                <input type="tel" x-model="bookingData.phone" placeholder="Enter phone number" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-lonash-blue focus:border-lonash-blue outline-none transition">
+                                <input type="tel" name="phone" x-model="bookingData.phone" required placeholder="Enter phone number" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-lonash-blue focus:border-lonash-blue outline-none transition">
                             </div>
                         </div>
 
                         <div>
                             <label class="block text-sm font-bold text-gray-700 mb-2">Special Requests (Optional)</label>
-                            <textarea x-model="bookingData.specialRequests" rows="3" placeholder="Any special requirements, dietary needs, accessibility requests, etc." class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-lonash-blue focus:border-lonash-blue outline-none transition"></textarea>
+                            <textarea name="special-requests" x-model="bookingData.specialRequests" rows="3" placeholder="Any special requirements, dietary needs, accessibility requests, etc." class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-lonash-blue focus:border-lonash-blue outline-none transition"></textarea>
                         </div>
 
                         <div x-show="selectedTour" class="bg-blue-50 p-4 rounded-xl border border-blue-100">
@@ -518,23 +500,24 @@
                             </div>
                         </div>
 
-                        <!-- Error Message -->
-                        <div x-show="paymentError" x-cloak class="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl">
-                            <p class="font-medium" x-text="paymentError"></p>
-                        </div>
-
-                        <button @click="goToStep2()" class="w-full bg-lonash-blue text-white py-4 rounded-xl font-bold text-lg hover:bg-blue-900 transition mt-4">Continue to Payment</button>
+                        <button type="button" @click="goToStep2()" class="w-full bg-lonash-blue text-white py-4 rounded-xl font-bold text-lg hover:bg-blue-900 transition mt-4">Continue to review</button>
                     </div>
                 </div>
 
                 <!-- Step 2: Payment Options -->
                 <div x-show="step === 2" x-cloak class="p-8 md:p-12">
-                    <h2 class="text-3xl font-bold text-lonash-blue mb-2">Payment Option</h2>
-                    <p class="text-gray-600 mb-8">Choose how you would like to pay for your trip.</p>
+                    <h2 class="text-3xl font-bold text-lonash-blue mb-2">Review &amp; confirm</h2>
+                    <p class="text-gray-600 mb-6">Confirm your details. No online payment is required.</p>
+
+                    <div class="mb-8 rounded-2xl border-2 border-lonash-blue bg-blue-50 p-6 text-center">
+                        <p class="text-sm font-bold uppercase tracking-wide text-lonash-blue">Payment method</p>
+                        <p class="mt-2 text-2xl font-bold text-gray-900">Pay on Arrival</p>
+                        <p class="mt-2 text-sm text-gray-600">You will pay when you arrive for your tour.</p>
+                    </div>
 
                     <div class="space-y-4 mb-8">
                         <label class="block relative border-2 rounded-2xl p-6 cursor-pointer transition" :class="bookingData.paymentMethod === 'arrival' ? 'border-lonash-blue bg-blue-50' : 'border-gray-200 hover:border-gray-300'">
-                            <input type="radio" x-model="bookingData.paymentMethod" value="arrival" class="absolute top-6 right-6 h-5 w-5 text-lonash-blue">
+                            <input type="radio" name="payment-option" x-model="bookingData.paymentMethod" value="arrival" class="absolute top-6 right-6 h-5 w-5 text-lonash-blue">
                             <div class="flex items-center space-x-4">
                                 <div class="bg-blue-100 p-3 rounded-full text-lonash-blue">
                                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
@@ -546,6 +529,8 @@
                             </div>
                         </label>
 
+                        <!-- 
+                        PAYMENT INTEGRATION - COMMENTED OUT
                         <label class="block relative border-2 rounded-2xl p-6 cursor-pointer transition" :class="bookingData.paymentMethod === 'momo' ? 'border-lonash-blue bg-blue-50' : 'border-gray-200 hover:border-gray-300'">
                             <input type="radio" x-model="bookingData.paymentMethod" value="momo" class="absolute top-6 right-6 h-5 w-5 text-lonash-blue">
                             <div class="flex items-center space-x-4">
@@ -558,9 +543,12 @@
                                 </div>
                             </div>
                         </label>
+                        -->
                     </div>
 
-                    <!-- Mobile Money Provider Selection -->
+                    <!-- 
+                    PAYMENT INTEGRATION - COMMENTED OUT
+                    Mobile Money Provider Selection
                     <div x-show="bookingData.paymentMethod === 'momo'" x-cloak class="mb-8 bg-gradient-to-r from-yellow-50 via-red-50 to-blue-50 p-6 rounded-2xl border border-gray-200">
                         <label class="block text-sm font-bold text-gray-700 mb-4">Select your Mobile Money provider:</label>
                         <div class="grid grid-cols-3 gap-3">
@@ -591,6 +579,7 @@
                             You will receive a prompt on your phone to complete the payment
                         </p>
                     </div>
+                    -->
 
                     <div class="bg-gray-50 p-6 rounded-2xl mb-8">
                         <div class="flex items-start space-x-3 text-sm text-gray-600">
@@ -599,19 +588,28 @@
                         </div>
                     </div>
 
+                    <div x-show="paymentError" x-cloak class="mb-6 bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl">
+                        <p class="font-medium" x-text="paymentError"></p>
+                    </div>
+
                     <div class="flex gap-4">
-                        <button @click="step = 1" class="flex-1 border-2 border-gray-200 text-gray-600 py-4 rounded-xl font-bold hover:bg-gray-50 transition">Back</button>
-                        <button @click="submitBooking()" class="flex-[2] bg-lonash-orange text-white py-4 rounded-xl font-bold text-lg hover:bg-orange-600 transition shadow-lg">Confirm Booking Inquiry</button>
+                        <button type="button" @click="step = 1" class="flex-1 border-2 border-gray-200 text-gray-600 py-4 rounded-xl font-bold hover:bg-gray-50 transition">Back</button>
+                        <button type="submit" :disabled="loading" class="flex-[2] bg-lonash-orange text-white py-4 rounded-xl font-bold text-lg hover:bg-orange-600 transition shadow-lg disabled:opacity-60">
+                            <span x-show="!loading">Submit booking</span>
+                            <span x-show="loading" x-cloak>Sending…</span>
+                        </button>
                     </div>
                 </div>
+                </form>
 
                 <!-- Step 3: Confirmation -->
                 <div x-show="step === 3" x-cloak class="p-8 md:p-12 text-center">
                     <div class="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
                         <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                     </div>
-                    <h2 class="text-3xl font-bold text-lonash-blue mb-4">Inquiry Received!</h2>
-                    <p class="text-gray-600 mb-2 max-w-md mx-auto">Thank you, <span x-text="bookingData.name" class="font-bold"></span>. Your booking inquiry for <span class="font-bold" x-text="tours.find(t => t.id === bookingData.tourId)?.title || 'your trip'"></span> has been sent to our team.</p>
+                    <h2 class="text-3xl font-bold text-lonash-blue mb-4">Booking received</h2>
+                    <p class="text-gray-600 mb-2 max-w-md mx-auto font-medium">Your booking has been received. Payment will be made on arrival.</p>
+                    <p class="text-gray-600 mb-2 max-w-md mx-auto">Thank you, <span x-text="bookingData.name" class="font-bold"></span>. We have your request for <span class="font-bold" x-text="tours.find(t => t.id === bookingData.tourId)?.title || 'your trip'"></span> and will follow up shortly.</p>
                     <div class="inline-block bg-lonash-blue/10 text-lonash-blue px-4 py-2 rounded-lg font-mono text-sm mb-8">
                         Reference: <span x-text="bookingRef"></span>
                     </div>

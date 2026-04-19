@@ -21,11 +21,8 @@
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/styles.css">
-    <script src="assets/js/config.js"></script>
     
-    <script type="module">
-        import { db, collection, addDoc } from './assets/js/firebase-config.js';
-
+    <script>
         document.addEventListener('alpine:init', () => {
             Alpine.data('customTripForm', () => ({
                 mobileMenuOpen: false,
@@ -166,31 +163,50 @@
                 },
 
                 async submitRequest() {
+                    if (!this.validateStep(this.step)) return;
                     this.loading = true;
                     try {
                         const ref = 'CUST-' + Math.random().toString(36).substring(2, 8).toUpperCase();
-                        
-                        // Check if Firebase is in mock mode
-                        if (db._mock) {
-                            console.log('Demo mode: Simulating submission');
-                            // Simulate successful submission
-                            await new Promise(resolve => setTimeout(resolve, 1000));
-                        } else {
-                            await addDoc(collection(db, 'customTrips'), {
-                                ...this.formData,
-                                status: 'Pending Review',
-                                reference: ref,
-                                createdAt: new Date().toISOString()
-                            });
-                        }
-                        
                         this.reference = ref;
+                        await this.$nextTick();
+
+                        const params = new URLSearchParams();
+                        params.append('form-name', 'custom-trip');
+                        params.append('customer-name', this.formData.name);
+                        params.append('email', this.formData.email);
+                        params.append('phone', this.formData.phone);
+                        params.append('group-size', String(this.formData.groupSize));
+                        params.append('trip-type', this.formData.tripType);
+                        params.append('destinations', this.formData.destinations.join(','));
+                        params.append('activities', this.formData.activities.join(','));
+                        params.append('duration', this.formData.duration);
+                        params.append('budget', this.formData.budget);
+                        params.append('special-interests', this.formData.specialInterests || '');
+                        params.append('arrival-date', this.formData.arrivalDate || '');
+                        params.append('departure-date', this.formData.departureDate || '');
+                        params.append('pickup-location', this.formData.pickupLocation || '');
+                        params.append('accommodation-type', this.formData.accommodationType);
+                        params.append('room-preference', this.formData.roomPreference);
+                        params.append('dietary-requirements', this.formData.dietaryRequirements || '');
+                        params.append('accessibility-needs', this.formData.accessibilityNeeds || '');
+                        params.append('additional-requests', this.formData.additionalRequests || '');
+                        params.append('request-reference', ref);
+                        params.append('bot-field', '');
+
+                        const res = await fetch('/', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                            body: params.toString()
+                        });
+
+                        if (!res.ok) {
+                            throw new Error('Could not submit your request. Deploy to Netlify to enable form handling, or contact us by phone.');
+                        }
+
                         this.submitted = true;
-                        
-                        // Send WhatsApp notification
                         this.sendWhatsAppNotification();
                     } catch (err) {
-                        alert('Failed to submit request: ' + err.message);
+                        alert(err.message || 'Failed to submit request.');
                         console.error(err);
                     } finally {
                         this.loading = false;
@@ -686,6 +702,31 @@
             <p>&copy; 2026 Caleb Amartey Amarh. All rights reserved. | <a href="admin/login.html" class="hover:text-lonash-orange transition">Admin Portal</a></p>
         </div>
     </footer>
+
+    <!-- Netlify: hidden form so the build registers the custom-trip form fields -->
+    <form name="custom-trip" method="POST" data-netlify="true" netlify-honeypot="bot-field" class="sr-only" aria-hidden="true">
+        <input type="hidden" name="form-name" value="custom-trip" />
+        <p class="hidden"><label>Do not fill: <input name="bot-field" /></label></p>
+        <input name="customer-name" />
+        <input name="email" />
+        <input name="phone" />
+        <input name="group-size" />
+        <input name="trip-type" />
+        <input name="destinations" />
+        <input name="activities" />
+        <input name="duration" />
+        <input name="budget" />
+        <input name="special-interests" />
+        <input name="arrival-date" />
+        <input name="departure-date" />
+        <input name="pickup-location" />
+        <input name="accommodation-type" />
+        <input name="room-preference" />
+        <input name="dietary-requirements" />
+        <input name="accessibility-needs" />
+        <input name="additional-requests" />
+        <input name="request-reference" />
+    </form>
 
     <script src="assets/js/main.js"></script>
 </body>

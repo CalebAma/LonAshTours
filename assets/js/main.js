@@ -98,15 +98,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// ── Utilities ─────────────────────────────────────────────
-export const formatGHS = (amount) =>
-    new Intl.NumberFormat('en-GH', { style: 'currency', currency: 'GHS' }).format(amount);
-
-export const generateRef = (prefix = 'LON') =>
-    `${prefix}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-
-export const validateEmail = (email) =>
-    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-
-export const validatePhone = (phone) =>
-    /^(\+233|0)[2-9]\d{8}$/.test(phone.replace(/\s/g, ''));
+// ── Utilities (attached for optional use; loaded as a classic script, not ES modules) ──
+window.LonAsh = {
+    formatGHS: (amount) =>
+        new Intl.NumberFormat('en-GH', { style: 'currency', currency: 'GHS' }).format(amount),
+    generateRef: (prefix = 'LON') =>
+        `${prefix}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+    validateEmail: (email) =>
+        /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email),
+    validatePhone: (phone) =>
+        /^(\+233|0)[2-9]\d{8}$/.test(String(phone).replace(/\s/g, ''))
+};

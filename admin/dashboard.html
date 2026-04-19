@@ -19,11 +19,7 @@
     </script>
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script type="module">
-        import { 
-            auth, db, collection, addDoc, getDocs, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc, onAuthStateChanged, signOut 
-        } from '../assets/js/firebase-config.js';
-
+    <script>
         document.addEventListener('alpine:init', () => {
             Alpine.data('adminDashboard', () => ({
                 currentTab: 'bookings',
@@ -34,84 +30,30 @@
                 customTrips: [],
                 selectedBooking: null,
                 showBookingModal: false,
-                user: null,
+                user: { email: 'admin@lonashtours.com' }, // Demo user - no auth
 
                 init() {
-                    // Check if Firebase is in mock mode (not configured)
-                    if (auth._mock || db._mock) {
-                        console.warn('Firebase not configured - using demo mode');
-                        this.user = { email: 'demo@lonashtours.com', uid: 'demo-user' };
-                        this.loadSampleData();
-                        return;
-                    }
-                    
-                    onAuthStateChanged(auth, (user) => {
-                        if (!user) {
-                            window.location.href = 'login.html';
-                        } else {
-                            this.user = user;
-                            this.setupRealtimeListeners();
-                        }
-                    });
+                    // Load static demo data - no Firebase
+                    this.loadDemoData();
                 },
 
-                setupRealtimeListeners() {
-                    try {
-                        // Listen for Bookings
-                        const bookingsQuery = query(collection(db, 'bookings'), orderBy('createdAt', 'desc'));
-                        onSnapshot(bookingsQuery, (snapshot) => {
-                            this.bookings = snapshot.docs.map(doc => ({
-                                id: doc.id,
-                                ...doc.data()
-                            }));
-                        }, (error) => {
-                            console.error('Error loading bookings:', error);
-                        });
-
-                        // Listen for Tours
-                        const toursQuery = query(collection(db, 'tours'), orderBy('createdAt', 'desc'));
-                        onSnapshot(toursQuery, (snapshot) => {
-                            this.tours = snapshot.docs.map(doc => ({
-                                id: doc.id,
-                                ...doc.data()
-                            }));
-                        }, (error) => {
-                            console.error('Error loading tours:', error);
-                        });
-
-                        // Listen for Custom Trips
-                        const customTripsQuery = query(collection(db, 'customTrips'), orderBy('createdAt', 'desc'));
-                        onSnapshot(customTripsQuery, (snapshot) => {
-                            this.customTrips = snapshot.docs.map(doc => ({
-                                id: doc.id,
-                                ...doc.data()
-                            }));
-                        }, (error) => {
-                            console.error('Error loading custom trips:', error);
-                        });
-                    } catch (error) {
-                        console.error('Error setting up listeners:', error);
-                        this.loadSampleData();
-                    }
-                },
-
-                loadSampleData() {
-                    // Sample tours
+                loadDemoData() {
+                    // Demo tours
                     this.tours = [
-                        { id: '1', title: 'Cape Coast Castle Tour', category: 'Educational', price: 450, duration: '1 Day', featured: true, createdAt: new Date().toISOString() },
-                        { id: '2', title: 'Kakum Canopy Walk', category: 'Adventure', price: 320, duration: '1 Day', featured: true, createdAt: new Date().toISOString() },
-                        { id: '3', title: 'Mole Safari', category: 'Wildlife', price: 1200, duration: '3 Days', featured: false, createdAt: new Date().toISOString() }
+                        { id: '1', title: 'Cape Coast Castle Tour', category: 'Educational', price: 450, duration: '1 Day', featured: true },
+                        { id: '2', title: 'Kakum Canopy Walk', category: 'Adventure', price: 320, duration: '1 Day', featured: true },
+                        { id: '3', title: 'Mole Safari', category: 'Wildlife', price: 1200, duration: '3 Days', featured: false }
                     ];
                     
-                    // Sample bookings
+                    // Demo bookings
                     this.bookings = [
-                        { id: 'booking-1', bookingRef: 'LON-12345', name: 'John Doe', email: 'john@example.com', phone: '+233501234567', tour: 'Cape Coast Castle Tour', date: '2026-05-15', amount: 450, status: 'Confirmed', paymentStatus: 'Paid', createdAt: new Date().toISOString() },
-                        { id: 'booking-2', bookingRef: 'LON-12346', name: 'Jane Smith', email: 'jane@example.com', phone: '+233502345678', tour: 'Kakum Canopy Walk', date: '2026-05-20', amount: 320, status: 'Pending', paymentStatus: 'Unpaid', createdAt: new Date().toISOString() }
+                        { id: 'b1', bookingRef: 'LON-12345', name: 'John Doe', email: 'john@example.com', phone: '+233501234567', tour: 'Cape Coast Castle Tour', date: '2026-05-15', amount: 450, status: 'Confirmed', paymentStatus: 'Paid' },
+                        { id: 'b2', bookingRef: 'LON-12346', name: 'Jane Smith', email: 'jane@example.com', phone: '+233502345678', tour: 'Kakum Canopy Walk', date: '2026-05-20', amount: 320, status: 'Pending', paymentStatus: 'Unpaid' }
                     ];
                     
-                    // Sample custom trips
+                    // Demo custom trips
                     this.customTrips = [
-                        { id: 'trip-1', reference: 'CUST-001', name: 'Mike Johnson', phone: '+233503456789', destinations: ['Cape Coast', 'Kakum'], duration: '2 Days', groupSize: 4, status: 'Pending Review', createdAt: new Date().toISOString() }
+                        { id: 'c1', reference: 'CUST-001', name: 'Mike Johnson', phone: '+233503456789', destinations: ['Cape Coast', 'Kakum'], duration: '2 Days', groupSize: 4, status: 'Pending Review' }
                     ];
                 },
 
@@ -152,46 +94,39 @@
                     });
                 },
 
-                async logout() {
-                    try {
-                        await signOut(auth);
-                        window.location.href = 'login.html';
-                    } catch (err) {
-                        console.error('Logout failed:', err);
-                    }
+                logout() {
+                    // Simple redirect - no Firebase auth
+                    window.location.href = 'login.html';
                 },
 
-                async deleteTour(id) {
+                deleteTour(id) {
                     if(confirm('Are you sure you want to delete this tour?')) {
-                        try {
-                            await deleteDoc(doc(db, 'tours', id));
-                        } catch (err) {
-                            console.error('Delete failed:', err);
-                        }
+                        // Remove from local array - no Firebase
+                        this.tours = this.tours.filter(t => t.id !== id);
+                        console.log('Tour deleted:', id);
                     }
                 },
 
-                async addTour() {
-                    try {
-                        await addDoc(collection(db, 'tours'), {
-                            ...this.newTour,
-                            price: Number(this.newTour.price),
-                            createdAt: new Date().toISOString()
-                        });
-                        this.newTour = { title: '', category: 'Adventure', price: '', image: '', description: '' };
-                        this.showTourModal = false;
-                    } catch (err) {
-                        console.error('Add tour failed:', err);
-                    }
+                addTour() {
+                    // Add to local array - no Firebase
+                    const newId = (this.tours.length + 1).toString();
+                    this.tours.push({
+                        id: newId,
+                        ...this.newTour,
+                        price: Number(this.newTour.price)
+                    });
+                    this.newTour = { title: '', category: 'Adventure', price: '', duration: '', image: '', description: '', featured: false };
+                    this.showTourModal = false;
+                    console.log('Tour added');
                 },
 
-                async updateBookingStatus(id, status) {
-                    try {
-                        const bookingRef = doc(db, 'bookings', id);
-                        await updateDoc(bookingRef, { status: status });
-                    } catch (err) {
-                        console.error('Update status failed:', err);
+                updateBookingStatus(id, status) {
+                    // Update local array - no Firebase
+                    const booking = this.bookings.find(b => b.id === id);
+                    if (booking) {
+                        booking.status = status;
                     }
+                    console.log('Booking status updated:', id, status);
                 }
             }));
         });
