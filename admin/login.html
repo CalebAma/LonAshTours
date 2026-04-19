@@ -24,10 +24,15 @@
 
         document.addEventListener('alpine:init', () => {
             Alpine.data('loginForm', () => ({
-                email: '', 
+                email: '',
                 password: '',
                 error: '',
                 loading: false,
+                init() {
+                    if (auth._mock) {
+                        window.location.href = 'dashboard.html';
+                    }
+                },
                 async login() {
                     this.loading = true;
                     this.error = '';

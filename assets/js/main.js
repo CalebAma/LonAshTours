@@ -99,14 +99,14 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ── Utilities ─────────────────────────────────────────────
-export const formatGHS = (amount) =>
+window.formatGHS = (amount) =>
     new Intl.NumberFormat('en-GH', { style: 'currency', currency: 'GHS' }).format(amount);
 
-export const generateRef = (prefix = 'LON') =>
+window.generateRef = (prefix = 'LON') =>
     `${prefix}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
-export const validateEmail = (email) =>
+window.validateEmail = (email) =>
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
-export const validatePhone = (phone) =>
+window.validatePhone = (phone) =>
     /^(\+233|0)[2-9]\d{8}$/.test(phone.replace(/\s/g, ''));

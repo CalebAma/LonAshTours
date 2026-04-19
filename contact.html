@@ -39,10 +39,12 @@
                 async sendMessage() {
                     this.loading = true;
                     try {
-                        await addDoc(collection(db, 'messages'), {
-                            ...this.formData,
-                            createdAt: new Date().toISOString()
-                        });
+                        if (!db._mock) {
+                            await addDoc(collection(db, 'messages'), {
+                                ...this.formData,
+                                createdAt: new Date().toISOString()
+                            });
+                        }
                         this.success = true;
                         this.formData = { name: '', email: '', subject: '', message: '' };
                         setTimeout(() => this.success = false, 5000);
