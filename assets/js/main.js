@@ -98,7 +98,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// ── Utilities (attached for optional use; loaded as a classic script, not ES modules) ──
+// ── Utilities (available as LonAsh.* and legacy globals) ──
 window.LonAsh = {
     formatGHS: (amount) =>
         new Intl.NumberFormat('en-GH', { style: 'currency', currency: 'GHS' }).format(amount),
@@ -109,3 +109,8 @@ window.LonAsh = {
     validatePhone: (phone) =>
         /^(\+233|0)[2-9]\d{8}$/.test(String(phone).replace(/\s/g, ''))
 };
+
+window.formatGHS = window.LonAsh.formatGHS;
+window.generateRef = window.LonAsh.generateRef;
+window.validateEmail = window.LonAsh.validateEmail;
+window.validatePhone = window.LonAsh.validatePhone;
