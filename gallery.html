@@ -25,9 +25,58 @@
     <style>
         body { font-family: 'Inter', sans-serif; }
         h1, h2, h3, .font-heading { font-family: 'Poppins', sans-serif; }
+        .gallery-masonry {
+            column-count: 2;
+            column-gap: 1rem;
+        }
+        @media (min-width: 640px) {
+            .gallery-masonry { column-count: 3; column-gap: 1.25rem; }
+        }
+        @media (min-width: 1024px) {
+            .gallery-masonry { column-count: 4; column-gap: 1.5rem; }
+        }
+        .gallery-item {
+            break-inside: avoid;
+            margin-bottom: 1rem;
+        }
+        @media (min-width: 640px) {
+            .gallery-item { margin-bottom: 1.25rem; }
+        }
+        @media (min-width: 1024px) {
+            .gallery-item { margin-bottom: 1.5rem; }
+        }
     </style>
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('galleryPage', () => {
+                const base = 'assets/images/';
+                const files = ['tour1.jpeg'];
+                for (let n = 1; n <= 30; n += 1) {
+                    files.push('Tours' + n + '.jpeg');
+                }
+                files.push('Tours15 (2).jpeg');
+                const images = files.map((name, i) => ({
+                    src: encodeURI(base + name),
+                    alt: 'LonAsh Tours — Ghana experience, photo ' + (i + 1)
+                }));
+                return {
+                    mobileMenuOpen: false,
+                    images,
+                    lightboxSrc: null,
+                    openLightbox(src) {
+                        this.lightboxSrc = src;
+                        document.body.classList.add('overflow-hidden');
+                    },
+                    closeLightbox() {
+                        this.lightboxSrc = null;
+                        document.body.classList.remove('overflow-hidden');
+                    }
+                };
+            });
+        });
+    </script>
 </head>
-<body class="bg-gray-50" x-data="{ mobileMenuOpen: false }">
+<body class="bg-gray-50" x-data="galleryPage" @keydown.escape.window="closeLightbox()">
 
     <!-- Header / Navbar -->
     <header class="bg-white shadow-sm sticky top-0 z-50">
@@ -75,69 +124,81 @@
 
     <main>
         <!-- Page Header -->
-        <section class="bg-lonash-blue py-16 text-white text-center">
-            <div class="container mx-auto px-4">
-                <h1 class="text-4xl font-bold mb-4">Tour Gallery</h1>
-                <p class="text-xl opacity-90">Capturing the magic of our adventures across Ghana.</p>
+        <section class="relative bg-gradient-to-br from-lonash-blue via-blue-900 to-slate-900 py-20 md:py-24 text-white text-center overflow-hidden">
+            <div class="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_30%_20%,white,transparent_50%)] pointer-events-none" aria-hidden="true"></div>
+            <div class="container mx-auto px-4 relative">
+                <p class="text-sm font-semibold uppercase tracking-[0.2em] text-orange-200 mb-3">Moments from the road</p>
+                <h1 class="text-4xl md:text-5xl font-bold font-heading mb-4">Tour gallery</h1>
+                <p class="text-lg md:text-xl text-blue-100 max-w-2xl mx-auto">Real scenes from LonAsh Tours across Ghana — tap any photo to view it larger.</p>
             </div>
         </section>
 
-        <!-- Gallery Grid -->
-        <section class="py-20">
-            <div class="container mx-auto px-4">
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <!-- Image 1 -->
-                    <div class="group relative overflow-hidden rounded-2xl shadow-lg h-80">
-                        <img src="https://images.unsplash.com/photo-1590059300300-8446908502f6?auto=format&fit=crop&q=80&w=600" alt="Kakum National Park" class="w-full h-full object-cover group-hover:scale-110 transition duration-500">
-                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition duration-300 flex items-end p-6">
-                            <p class="text-white font-bold">Kakum Canopy Walk</p>
-                        </div>
+        <!-- Gallery -->
+        <section class="py-16 md:py-20 bg-gradient-to-b from-gray-50 to-white">
+            <div class="container mx-auto px-4 max-w-7xl">
+                <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-10 md:mb-12">
+                    <div>
+                        <h2 class="text-2xl md:text-3xl font-bold text-gray-900 font-heading">Ghana through our lens</h2>
+                        <p class="text-gray-600 mt-2 max-w-xl">A curated wall of tour photography from our guests and guides. Images load as you scroll for a smooth experience.</p>
                     </div>
-                    <!-- Image 2 -->
-                    <div class="group relative overflow-hidden rounded-2xl shadow-lg h-80">
-                        <img src="https://images.unsplash.com/photo-1620052739343-470a7f05359a?auto=format&fit=crop&q=80&w=600" alt="Cape Coast Castle" class="w-full h-full object-cover group-hover:scale-110 transition duration-500">
-                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition duration-300 flex items-end p-6">
-                            <p class="text-white font-bold">Historic Cape Coast Castle</p>
-                        </div>
-                    </div>
-                    <!-- Image 3 -->
-                    <div class="group relative overflow-hidden rounded-2xl shadow-lg h-80">
-                        <img src="https://images.unsplash.com/photo-1547471080-7cc2caa01a7e?auto=format&fit=crop&q=80&w=600" alt="Mole Safari" class="w-full h-full object-cover group-hover:scale-110 transition duration-500">
-                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition duration-300 flex items-end p-6">
-                            <p class="text-white font-bold">Safari at Mole National Park</p>
-                        </div>
-                    </div>
-                    <!-- Image 4 -->
-                    <div class="group relative overflow-hidden rounded-2xl shadow-lg h-80">
-                        <img src="https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&q=80&w=600" alt="Boti Falls" class="w-full h-full object-cover group-hover:scale-110 transition duration-500">
-                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition duration-300 flex items-end p-6">
-                            <p class="text-white font-bold">The Twin Boti Falls</p>
-                        </div>
-                    </div>
-                    <!-- Image 5 -->
-                    <div class="group relative overflow-hidden rounded-2xl shadow-lg h-80">
-                        <img src="https://images.unsplash.com/photo-1591129841117-3adfd313e34f?auto=format&fit=crop&q=80&w=600" alt="Accra Beach" class="w-full h-full object-cover group-hover:scale-110 transition duration-500">
-                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition duration-300 flex items-end p-6">
-                            <p class="text-white font-bold">Vibrant Accra Coastline</p>
-                        </div>
-                    </div>
-                    <!-- Image 6 -->
-                    <div class="group relative overflow-hidden rounded-2xl shadow-lg h-80">
-                        <img src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&q=80&w=600" alt="Busua Beach" class="w-full h-full object-cover group-hover:scale-110 transition duration-500">
-                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition duration-300 flex items-end p-6">
-                            <p class="text-white font-bold">Relaxing at Busua Beach</p>
-                        </div>
-                    </div>
+                    <a href="booking.html" class="inline-flex items-center justify-center self-start sm:self-auto bg-lonash-orange text-white px-6 py-3 rounded-full font-bold text-sm hover:bg-orange-600 transition shadow-md hover:shadow-lg">Book a tour</a>
                 </div>
 
-                <!-- Empty State CTA -->
-                <div class="mt-16 text-center bg-white p-12 rounded-3xl shadow-sm border border-dashed border-gray-300">
-                    <h3 class="text-2xl font-bold text-gray-800 mb-4">Want to see your pictures here?</h3>
-                    <p class="text-gray-600 mb-8 max-w-md mx-auto">Book a tour with us today and create unforgettable memories that we can't wait to showcase!</p>
-                    <a href="booking.html" class="bg-lonash-orange text-white px-10 py-4 rounded-full font-bold hover:bg-orange-600 transition shadow-lg">Start Your Adventure</a>
+                <div class="gallery-masonry">
+                    <template x-for="(img, index) in images" :key="img.src">
+                        <article class="gallery-item group relative rounded-2xl overflow-hidden bg-gray-200 shadow-md ring-1 ring-black/5 hover:shadow-xl hover:ring-lonash-blue/20 transition-all duration-300 cursor-zoom-in">
+                            <button type="button"
+                                    class="block w-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-lonash-orange focus-visible:ring-offset-2 rounded-2xl"
+                                    @click="openLightbox(img.src)"
+                                    :aria-label="'View gallery image ' + (index + 1) + ' larger'">
+                                <img :src="img.src"
+                                     :alt="img.alt"
+                                     loading="lazy"
+                                     decoding="async"
+                                     class="w-full h-auto object-cover transition duration-500 ease-out group-hover:scale-[1.03]">
+                                <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-transparent opacity-80 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300"></div>
+                                <div class="pointer-events-none absolute bottom-0 left-0 right-0 p-4 md:p-5 translate-y-1 md:translate-y-2 md:group-hover:translate-y-0 transition-transform duration-300">
+                                    <span class="inline-flex items-center rounded-full bg-white/95 backdrop-blur px-3 py-1 text-xs font-bold text-lonash-blue shadow-sm">LonAsh Tours</span>
+                                    <p class="mt-2 text-sm font-semibold text-white drop-shadow-md md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">Ghana experience · <span x-text="index + 1"></span></p>
+                                </div>
+                            </button>
+                        </article>
+                    </template>
+                </div>
+
+                <div class="mt-16 md:mt-20 text-center rounded-3xl bg-lonash-blue text-white p-10 md:p-14 shadow-xl">
+                    <h3 class="text-2xl md:text-3xl font-bold font-heading mb-3">Want your story in our gallery?</h3>
+                    <p class="text-blue-100 max-w-lg mx-auto mb-8">Travel with us and we will help you capture memories worth sharing — from coastlines to castles and beyond.</p>
+                    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                        <a href="booking.html" class="inline-flex justify-center bg-lonash-orange text-white px-8 py-3.5 rounded-full font-bold hover:bg-orange-600 transition shadow-lg">Start your adventure</a>
+                        <a href="contact.html" class="inline-flex justify-center border-2 border-white/40 text-white px-8 py-3.5 rounded-full font-bold hover:bg-white/10 transition">Contact us</a>
+                    </div>
                 </div>
             </div>
         </section>
+
+        <!-- Lightbox -->
+        <div x-show="lightboxSrc"
+             x-cloak
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition ease-in duration-150"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm"
+             role="dialog"
+             aria-modal="true"
+             aria-label="Enlarged photo">
+            <button type="button"
+                    class="absolute top-4 right-4 z-10 rounded-full bg-white/10 p-3 text-white hover:bg-white/20 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                    @click="closeLightbox()"
+                    aria-label="Close">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            <button type="button" class="absolute inset-0 cursor-default" @click="closeLightbox()" tabindex="-1" aria-hidden="true"></button>
+            <img :src="lightboxSrc" alt="Gallery photo — full size" class="relative z-[1] max-h-[min(90vh,900px)] max-w-full object-contain rounded-lg shadow-2xl ring-1 ring-white/10">
+        </div>
     </main>
 
     <!-- Footer -->

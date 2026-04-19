@@ -30,11 +30,31 @@
                 customTrips: [],
                 selectedBooking: null,
                 showBookingModal: false,
-                user: { email: 'admin@lonashtours.com' }, // Demo user - no auth
+                user: { email: 'admin@lonashtours.com' }, // Local session (no Firebase)
+                search: '',
+                statusFilter: 'all',
+                paymentFilter: 'all',
+                showImportModal: false,
+                importError: '',
 
                 init() {
-                    // Load static demo data - no Firebase
+                    // Session gate
+                    try {
+                        const session = JSON.parse(localStorage.getItem('lonash_admin_session') || 'null');
+                        if (!session?.active) {
+                            window.location.href = 'login.html';
+                            return;
+                        }
+                        this.user = { email: session.email || 'admin@lonashtours.com' };
+                    } catch (_) {
+                        window.location.href = 'login.html';
+                        return;
+                    }
+
+                    // Load demo data, then merge any locally stored submissions
                     this.loadDemoData();
+                    this.mergeStoredBookings();
+                    this.mergeStoredCustomTrips();
                 },
 
                 loadDemoData() {
@@ -65,8 +85,108 @@
                     return this.bookings.filter(b => b.status === 'Pending' || b.status === 'Pending Payment');
                 },
 
+                get filteredBookings() {
+                    const q = (this.search || '').trim().toLowerCase();
+                    return this.bookings.filter(b => {
+                        const statusOk = this.statusFilter === 'all' ? true : String(b.status || '').toLowerCase() === this.statusFilter;
+                        const paymentOk = this.paymentFilter === 'all'
+                            ? true
+                            : (this.paymentFilter === 'arrival'
+                                ? (String(b.paymentMethod || b.payment_method || 'arrival').toLowerCase() === 'arrival')
+                                : true);
+                        const searchOk = !q ? true : [
+                            b.bookingRef, b.name, b.email, b.phone, b.tour, b.date
+                        ].some(v => String(v || '').toLowerCase().includes(q));
+                        return statusOk && paymentOk && searchOk;
+                    });
+                },
+
                 get totalRevenue() {
                     return this.paidBookings.reduce((sum, b) => sum + (b.amount || 0), 0);
+                },
+
+                mergeStoredBookings() {
+                    try {
+                        const stored = JSON.parse(localStorage.getItem('lonash_bookings') || '[]');
+                        if (!Array.isArray(stored) || stored.length === 0) return;
+                        const existing = new Set(this.bookings.map(b => b.bookingRef || b.id));
+                        const normalized = stored.map(b => ({
+                            id: b.id || ('b_' + Math.random().toString(16).slice(2)),
+                            bookingRef: b.bookingRef || b['booking-reference'] || b.booking_reference || b.id,
+                            name: b.name || b['customer-name'] || b.customer_name || 'Unknown',
+                            email: b.email || 'N/A',
+                            phone: b.phone || 'N/A',
+                            tour: b.tour || b['tour-title'] || b.tour_title || 'Tour',
+                            date: b.date || b['preferred-date'] || b.preferred_date || '',
+                            travelers: b.travelers || 1,
+                            amount: Number(b.amount || b['estimated-total-ghs'] || b.estimated_total_ghs || 0),
+                            paymentMethod: b.paymentMethod || b['payment-method'] || b.payment_method || 'arrival',
+                            paymentStatus: b.paymentStatus || b.payment_status || 'Unpaid',
+                            status: b.status || 'Pending',
+                            specialRequests: b.specialRequests || b['special-requests'] || b.special_requests || '',
+                            createdAt: b.createdAt || b.created_at || new Date().toISOString()
+                        })).filter(b => !existing.has(b.bookingRef || b.id));
+
+                        if (normalized.length) {
+                            this.bookings = [...normalized, ...this.bookings];
+                        }
+                    } catch (e) {
+                        console.warn('Could not load stored bookings:', e);
+                    }
+                },
+
+                mergeStoredCustomTrips() {
+                    try {
+                        const stored = JSON.parse(localStorage.getItem('lonash_custom_trips') || '[]');
+                        if (!Array.isArray(stored) || stored.length === 0) return;
+                        const existing = new Set(this.customTrips.map(t => t.reference || t.id));
+                        const normalized = stored.map(t => ({
+                            id: t.id || ('c_' + Math.random().toString(16).slice(2)),
+                            reference: t.reference || t['request-reference'] || t.request_reference || 'CUST',
+                            name: t.name || t['customer-name'] || t.customer_name || 'Unknown',
+                            phone: t.phone || 'N/A',
+                            destinations: t.destinations || [],
+                            duration: t.duration || '',
+                            groupSize: t.groupSize || t['group-size'] || 1,
+                            status: t.status || 'Pending Review'
+                        })).filter(t => !existing.has(t.reference || t.id));
+                        if (normalized.length) this.customTrips = [...normalized, ...this.customTrips];
+                    } catch (e) {
+                        console.warn('Could not load stored custom trips:', e);
+                    }
+                },
+
+                persistBookings() {
+                    try {
+                        const stored = JSON.parse(localStorage.getItem('lonash_bookings') || '[]');
+                        const byRef = new Map(Array.isArray(stored) ? stored.map(b => [b.bookingRef || b['booking-reference'] || b.id, b]) : []);
+                        // Only persist real stored bookings (those with bookingRef that exist in storage)
+                        this.bookings.forEach(b => {
+                            const key = b.bookingRef || b.id;
+                            if (!byRef.has(key)) return;
+                            const prev = byRef.get(key) || {};
+                            byRef.set(key, {
+                                ...prev,
+                                bookingRef: b.bookingRef,
+                                id: b.id,
+                                name: b.name,
+                                email: b.email,
+                                phone: b.phone,
+                                tour: b.tour,
+                                date: b.date,
+                                travelers: b.travelers,
+                                amount: b.amount,
+                                paymentMethod: b.paymentMethod || 'arrival',
+                                paymentStatus: b.paymentStatus || 'Unpaid',
+                                status: b.status || 'Pending',
+                                specialRequests: b.specialRequests || '',
+                                createdAt: b.createdAt || prev.createdAt || new Date().toISOString()
+                            });
+                        });
+                        localStorage.setItem('lonash_bookings', JSON.stringify(Array.from(byRef.values()).slice(0, 300)));
+                    } catch (e) {
+                        console.warn('Could not persist bookings:', e);
+                    }
                 },
 
                 openBookingDetails(booking) {
@@ -95,7 +215,7 @@
                 },
 
                 logout() {
-                    // Simple redirect - no Firebase auth
+                    try { localStorage.removeItem('lonash_admin_session'); } catch (_) {}
                     window.location.href = 'login.html';
                 },
 
@@ -125,8 +245,52 @@
                     const booking = this.bookings.find(b => b.id === id);
                     if (booking) {
                         booking.status = status;
+                        if (status === 'Confirmed') {
+                            booking.paymentMethod = booking.paymentMethod || 'arrival';
+                        }
+                        this.persistBookings();
                     }
                     console.log('Booking status updated:', id, status);
+                },
+
+                exportBookings() {
+                    const data = this.filteredBookings.map(b => ({ ...b }));
+                    const blob = new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), bookings: data }, null, 2)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `lonash-bookings-${new Date().toISOString().slice(0, 10)}.json`;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    URL.revokeObjectURL(url);
+                },
+
+                openImport() {
+                    this.importError = '';
+                    this.showImportModal = true;
+                    this.$nextTick(() => this.$refs.importFile?.click());
+                },
+
+                importBookingsFromFile(file) {
+                    this.importError = '';
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        try {
+                            const parsed = JSON.parse(String(reader.result || '{}'));
+                            const list = Array.isArray(parsed) ? parsed : (parsed.bookings || []);
+                            if (!Array.isArray(list)) throw new Error('Invalid file format.');
+                            const stored = JSON.parse(localStorage.getItem('lonash_bookings') || '[]');
+                            const merged = [...list, ...(Array.isArray(stored) ? stored : [])];
+                            localStorage.setItem('lonash_bookings', JSON.stringify(merged.slice(0, 300)));
+                            this.showImportModal = false;
+                            this.mergeStoredBookings();
+                        } catch (e) {
+                            this.importError = e.message || 'Failed to import.';
+                        }
+                    };
+                    reader.readAsText(file);
                 }
             }));
         });
@@ -302,10 +466,26 @@
 
         <!-- Bookings Tab -->
         <div x-show="currentTab === 'bookings'" x-cloak>
-            <div class="flex justify-between items-center mb-6">
-                <h3 class="text-xl font-bold">All Bookings</h3>
-                <div class="flex gap-2">
-                    <span class="text-sm text-gray-500 self-center">Total: <span x-text="bookings.length" class="font-bold"></span></span>
+            <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-4 mb-6">
+                <div>
+                    <h3 class="text-xl font-bold">All Booking Requests</h3>
+                    <p class="text-sm text-gray-500">Pay on Arrival is the default payment method.</p>
+                </div>
+                <div class="flex flex-col sm:flex-row gap-3 sm:items-center">
+                    <div class="relative">
+                        <svg class="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35m1.85-5.15a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        <input x-model="search" type="text" placeholder="Search name, phone, ref, tour..." class="w-full sm:w-72 pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-lonash-blue outline-none">
+                    </div>
+                    <select x-model="statusFilter" class="px-4 py-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-lonash-blue outline-none">
+                        <option value="all">All statuses</option>
+                        <option value="pending">Pending</option>
+                        <option value="confirmed">Confirmed</option>
+                        <option value="cancelled">Cancelled</option>
+                        <option value="completed">Completed</option>
+                    </select>
+                    <button @click="exportBookings()" class="px-5 py-3 rounded-xl border border-gray-200 bg-white font-bold hover:bg-gray-50 transition">Export</button>
+                    <button @click="openImport()" class="px-5 py-3 rounded-xl bg-lonash-blue text-white font-bold hover:bg-blue-900 transition">Import</button>
+                    <span class="text-sm text-gray-500 self-center">Showing: <span x-text="filteredBookings.length" class="font-bold"></span></span>
                 </div>
             </div>
             <div class="bg-white rounded-3xl shadow-sm border overflow-hidden">
@@ -324,7 +504,7 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y">
-                            <template x-for="booking in bookings" :key="booking.id">
+                            <template x-for="booking in filteredBookings" :key="booking.id">
                                 <tr class="hover:bg-gray-50 transition">
                                     <td class="px-4 py-3 font-mono text-sm text-lonash-blue" x-text="booking.bookingRef || booking.id.substring(0, 8)"></td>
                                     <td class="px-4 py-3">
@@ -340,6 +520,7 @@
                                             'bg-yellow-100 text-yellow-700': booking.paymentStatus === 'Pending' || !booking.paymentStatus,
                                             'bg-red-100 text-red-700': booking.paymentStatus === 'Failed'
                                         }" class="px-2 py-1 rounded-full text-xs font-bold" x-text="booking.paymentStatus || 'Unpaid'"></span>
+                                        <div class="text-[11px] text-gray-400 mt-1">Method: <span class="font-semibold text-gray-600" x-text="(booking.paymentMethod || 'arrival') === 'arrival' ? 'Pay on Arrival' : booking.paymentMethod"></span></div>
                                     </td>
                                     <td class="px-4 py-3">
                                         <span :class="{
@@ -374,7 +555,7 @@
                         </tbody>
                     </table>
                 </div>
-                <div x-show="bookings.length === 0" class="p-12 text-center text-gray-500">No booking requests found.</div>
+                <div x-show="filteredBookings.length === 0" class="p-12 text-center text-gray-500">No booking requests found.</div>
             </div>
         </div>
 
@@ -589,7 +770,7 @@
                     </div>
                     <div class="flex justify-between items-center mb-2">
                         <p class="text-sm text-gray-500">Payment Method</p>
-                        <p class="font-bold" x-text="selectedBooking?.paymentMethod === 'momo' ? 'Mobile Money' : 'Pay on Arrival'"></p>
+                        <p class="font-bold" x-text="(selectedBooking?.paymentMethod || 'arrival') === 'arrival' ? 'Pay on Arrival' : selectedBooking?.paymentMethod"></p>
                     </div>
                     <div class="flex justify-between items-center">
                         <p class="text-sm text-gray-500">Payment Status</p>
@@ -621,6 +802,27 @@
                         Contact via WhatsApp
                     </a>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import Modal (file picker) -->
+    <div x-show="showImportModal" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div @click.away="showImportModal = false" class="bg-white rounded-3xl p-8 w-full max-w-lg shadow-2xl">
+            <div class="flex items-center justify-between mb-2">
+                <h3 class="text-2xl font-bold text-lonash-blue">Import bookings</h3>
+                <button @click="showImportModal = false" class="p-2 hover:bg-gray-100 rounded-full transition" aria-label="Close import modal">
+                    <svg class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <p class="text-sm text-gray-600 mb-6">Choose a previously exported JSON file to restore bookings on this device.</p>
+            <input x-ref="importFile" type="file" accept="application/json" class="hidden" @change="importBookingsFromFile($event.target.files?.[0])" />
+            <div x-show="importError" x-cloak class="bg-red-50 text-red-700 p-3 rounded-xl text-sm font-medium mb-4" x-text="importError"></div>
+            <div class="flex gap-3">
+                <button @click="$refs.importFile.click()" class="flex-1 bg-lonash-blue text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-900 transition">Choose file</button>
+                <button @click="showImportModal = false" class="flex-1 border border-gray-200 px-6 py-3 rounded-xl font-bold hover:bg-gray-50 transition">Cancel</button>
             </div>
         </div>
     </div>
