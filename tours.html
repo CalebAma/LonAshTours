@@ -26,6 +26,7 @@
         document.addEventListener('alpine:init', () => {
             Alpine.data('toursPage', () => ({
                 mobileMenuOpen: false,
+                mobileFiltersOpen: false,
                 selectedCategory: 'all',
                 selectedDuration: 'all',
                 searchQuery: '',
@@ -248,19 +249,36 @@
         </section>
 
         <!-- Filters -->
-        <section class="py-8 bg-white border-b sticky top-[72px] z-40 shadow-sm">
+        <section class="sticky top-0 z-10 bg-white border-b shadow-sm py-3 md:py-8">
             <div class="container mx-auto px-4">
                 <div class="flex flex-col gap-4">
+                    <!-- Mobile Filter Toggle -->
+                    <button
+                        type="button"
+                        class="md:hidden w-full flex items-center justify-between px-4 py-2.5 rounded-xl border bg-gray-50 text-gray-700 font-semibold"
+                        @click="mobileFiltersOpen = !mobileFiltersOpen"
+                        :aria-expanded="mobileFiltersOpen.toString()"
+                    >
+                        <span>Filter Tours</span>
+                        <svg class="w-5 h-5 transition-transform" :class="mobileFiltersOpen ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </button>
+
                     <!-- Top Row: Categories & Search -->
-                    <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div
+                        class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4"
+                        x-show="mobileFiltersOpen || window.innerWidth >= 768"
+                        x-transition
+                    >
                         <!-- Category Buttons -->
-                        <div class="flex flex-wrap items-center justify-center gap-2">
-                            <button @click="selectedCategory = 'all'" :class="selectedCategory === 'all' ? 'bg-lonash-blue text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-4 py-2 rounded-full font-medium transition text-sm">All Tours</button>
-                            <button @click="selectedCategory = 'adventure'" :class="selectedCategory === 'adventure' ? 'bg-lonash-blue text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-4 py-2 rounded-full font-medium transition text-sm">Adventure</button>
-                            <button @click="selectedCategory = 'educational'" :class="selectedCategory === 'educational' ? 'bg-lonash-blue text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-4 py-2 rounded-full font-medium transition text-sm">Educational</button>
-                            <button @click="selectedCategory = 'wildlife'" :class="selectedCategory === 'wildlife' ? 'bg-lonash-blue text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-4 py-2 rounded-full font-medium transition text-sm">Wildlife</button>
-                            <button @click="selectedCategory = 'nature'" :class="selectedCategory === 'nature' ? 'bg-lonash-blue text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-4 py-2 rounded-full font-medium transition text-sm">Nature</button>
-                            <button @click="selectedCategory = 'cultural'" :class="selectedCategory === 'cultural' ? 'bg-lonash-blue text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-4 py-2 rounded-full font-medium transition text-sm">Cultural</button>
+                        <div class="flex md:flex-wrap items-center md:justify-center gap-2 overflow-x-auto md:overflow-visible whitespace-nowrap pb-1">
+                            <button @click="selectedCategory = 'all'" :class="selectedCategory === 'all' ? 'bg-lonash-blue text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-4 py-2 rounded-full font-medium transition text-sm shrink-0">All Tours</button>
+                            <button @click="selectedCategory = 'adventure'" :class="selectedCategory === 'adventure' ? 'bg-lonash-blue text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-4 py-2 rounded-full font-medium transition text-sm shrink-0">Adventure</button>
+                            <button @click="selectedCategory = 'educational'" :class="selectedCategory === 'educational' ? 'bg-lonash-blue text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-4 py-2 rounded-full font-medium transition text-sm shrink-0">Educational</button>
+                            <button @click="selectedCategory = 'wildlife'" :class="selectedCategory === 'wildlife' ? 'bg-lonash-blue text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-4 py-2 rounded-full font-medium transition text-sm shrink-0">Wildlife</button>
+                            <button @click="selectedCategory = 'nature'" :class="selectedCategory === 'nature' ? 'bg-lonash-blue text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-4 py-2 rounded-full font-medium transition text-sm shrink-0">Nature</button>
+                            <button @click="selectedCategory = 'cultural'" :class="selectedCategory === 'cultural' ? 'bg-lonash-blue text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-4 py-2 rounded-full font-medium transition text-sm shrink-0">Cultural</button>
                         </div>
 
                         <!-- Search Bar -->
@@ -271,15 +289,19 @@
                     </div>
                     
                     <!-- Bottom Row: Duration Filter & Sort -->
-                    <div class="flex flex-col md:flex-row items-center justify-between gap-4 pt-2 border-t">
+                    <div
+                        class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 pt-2 border-t"
+                        x-show="mobileFiltersOpen || window.innerWidth >= 768"
+                        x-transition
+                    >
                         <!-- Duration Filter -->
-                        <div class="flex items-center gap-2">
-                            <span class="text-sm text-gray-500 font-medium">Duration:</span>
-                            <div class="flex flex-wrap gap-2">
-                                <button @click="selectedDuration = 'all'" :class="selectedDuration === 'all' ? 'bg-lonash-orange text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-3 py-1 rounded-full text-xs font-medium transition">All</button>
-                                <button @click="selectedDuration = 'short'" :class="selectedDuration === 'short' ? 'bg-lonash-orange text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-3 py-1 rounded-full text-xs font-medium transition">1-2 Days</button>
-                                <button @click="selectedDuration = 'medium'" :class="selectedDuration === 'medium' ? 'bg-lonash-orange text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-3 py-1 rounded-full text-xs font-medium transition">3-5 Days</button>
-                                <button @click="selectedDuration = 'long'" :class="selectedDuration === 'long' ? 'bg-lonash-orange text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-3 py-1 rounded-full text-xs font-medium transition">6+ Days</button>
+                        <div class="flex flex-col sm:flex-row sm:items-center gap-2">
+                            <span class="text-sm text-gray-500 font-medium shrink-0">Duration:</span>
+                            <div class="flex gap-2 overflow-x-auto whitespace-nowrap pb-1">
+                                <button @click="selectedDuration = 'all'" :class="selectedDuration === 'all' ? 'bg-lonash-orange text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-3 py-1 rounded-full text-xs font-medium transition shrink-0">All</button>
+                                <button @click="selectedDuration = 'short'" :class="selectedDuration === 'short' ? 'bg-lonash-orange text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-3 py-1 rounded-full text-xs font-medium transition shrink-0">1-2 Days</button>
+                                <button @click="selectedDuration = 'medium'" :class="selectedDuration === 'medium' ? 'bg-lonash-orange text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-3 py-1 rounded-full text-xs font-medium transition shrink-0">3-5 Days</button>
+                                <button @click="selectedDuration = 'long'" :class="selectedDuration === 'long' ? 'bg-lonash-orange text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-3 py-1 rounded-full text-xs font-medium transition shrink-0">6+ Days</button>
                             </div>
                         </div>
                         
@@ -298,7 +320,7 @@
         </section>
 
         <!-- Tours List -->
-        <section class="py-16">
+        <section class="py-16 pt-12 md:pt-16">
             <div class="container mx-auto px-4">
                 <!-- Loading State -->
                 <div x-show="loading" class="text-center py-20">
